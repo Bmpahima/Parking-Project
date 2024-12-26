@@ -2,8 +2,6 @@ import cv2
 import pickle
 import os
 import numpy as np
-import math
-
 from model import make_prediction
 
 save_dir = 'parking_images'
@@ -101,7 +99,7 @@ def initial_parking_mark():
         cv2.setMouseCallback("Image", mouseclick)
 
         k = cv2.waitKey(1)
-        if k == ord('q'):
+        if k == ord('q') or k == ord('Q'):
             break
 
     cv2.destroyAllWindows()
