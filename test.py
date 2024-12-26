@@ -1,46 +1,130 @@
 import cv2
+import pickle
+import os
 import numpy as np
+import math
 
-def create_binary_image(filename):
-    # Load the image
-    img = cv2.imread(filename)
-    if img is None:
-        raise FileNotFoundError(f"File {filename} not found.")
+# from model import make_prediction
 
-    # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# שומר את התמונות 
+save_dir = 'parking_images'
 
-    # Enhance contrast using CLAHE
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(gray)
+# אם התיקיה לא קיימת - תיצור אותה
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
 
-    # Apply GaussianBlur to reduce noise
-    blurred = cv2.GaussianBlur(enhanced, (5, 5), 0)
+# לפתוח קובץ פיקל ששומר את הנקודות
+try:
+    with open('carposition.pkl', 'rb') as f:
+        positionList = pickle.load(f)
+except:
+    positionList = []
 
-    # Apply Canny edge detection
-    edges = cv2.Canny(blurred, 50, 150, apertureSize=3)
+current_pos = [] 
 
-    # Apply morphological closing to enhance the edges
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    closed_edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+def get_next_id():
+    return max([pos['id'] for pos in positionList]) + 1 if positionList else 0
 
-    # Combine the edges with the original enhanced image
-    combined = cv2.addWeighted(closed_edges, 0.8, enhanced, 0.2, 0)
+# פונקציה לחישוב המיקום של הטקסט עבור כל חנייה
+def mid_point(point1, point2):
+    mid_x = ((point1[0] + point2[0]) / 2) - 24
+    mid_y = ((point1[1] + point2[1]) / 2)
+    return (int(mid_x), int(mid_y))  # המרת ערכים לשלמים
 
-    # Apply threshold to create binary image
-    _, binary = cv2.threshold(combined, 200, 255, cv2.THRESH_BINARY)
+# פונקציה לשמירת התמונות
+def save_cropped_img(img, points, id):
+    # שמירת הנקודות המערך של נאמפיי כדי שיתאימו בפורמט לפונקציה של שינוי הפרספקטיבה
+    src_points = np.array(points, dtype=np.float32)
 
-    # Save and display the binary image
-    output_filename = "binary_parking_lot_final.png"
-    cv2.imwrite(output_filename, binary)
+    # Calculate the width and height of the image
+    img_width = math.floor(math.dist(points[0], points[1]))
+    img_height = math.floor(math.dist(points[1], points[2]))
+    print(img_width, img_height)
 
-    cv2.imshow('Binary Image - Final', binary)
-    k = cv2.waitKey(0)
+    dst_points = np.array([[0, 0], [img_width, 0], [img_width, img_height], [0, img_height]], dtype=np.float32)
+
+    # מקבל את המטריצה של הפרספקטיבה
+    matrix = cv2.getPerspectiveTransform(src_points, dst_points) # התאמת פרספקטיבה
+
+    # משנה את הפרספקטיבה של התמונה
+    cropped_img = cv2.warpPerspective(img, matrix, (img_width, img_height)) # צריך את התמונה אחרי שינוי הפרספקטיבה לצורך זיהוי אם יש שם מכונית או לא
+
+    # שמירת התמונה
+    save_path = os.path.join(save_dir, f'parking_no{id}.png')
+    cv2.imwrite(save_path, cropped_img)
+    print(f'Saved cropped image: {save_path}')
+
+
+def mouseclick(events, x, y, flags, params):
+    global current_pos
+
+    if events == cv2.EVENT_LBUTTONDOWN:
+        current_pos.append((x, y))
+        print(f'Point added: {x, y}')
+
+        # אם נבחרו 4 נקודות ישמור את הנקודות ויציג את החנייה
+        if len(current_pos) == 4:
+            positionList.append({
+                "id": get_next_id(),
+                "points": current_pos,
+                "occupied": False
+            })
+            save_cropped_img(cv2.resize(cv2.imread('parking.png'), (1280, 720)), current_pos, (get_next_id() - 1)) # שמירת התמונה של החנייה
+            current_pos = []  # בחירת נקודו מחודשת
+
+    # אם נלחץ על הכפתור הימני זה ימחק את החנייה
+    if events == cv2.EVENT_RBUTTONDOWN:
+        for i, pos in enumerate(positionList):
+            # Assuming you want to check if (x, y) is inside any saved polygon (simplification needed)
+            if cv2.pointPolygonTest(np.array(pos['points'], dtype=np.int32), (x, y), False) >= 0:
+                print(f'Removed region: {pos}')
+                positionList.pop(i)
+                if os.path.exists(save_dir + f'/parking_no{pos["id"]}.png'):
+                    os.remove(save_dir + f'/parking_no{pos["id"]}.png')
+                break
+
+    # שומר את הנקודות בקובץ פיקל
+    with open('carposition.pkl', 'wb') as f:
+        pickle.dump(positionList, f)
+
+def initial_parking_mark():
+    while True:
+        image = cv2.imread('parking.png')
+
+        # כל חנייה מיוצגת על ידי 4 נקודות 
+        # מצייר את הצורות של החניות לפי הנקודות
+        for pos in positionList:
+            pts = np.array(pos['points'], np.int32).reshape((-1, 1, 2))
+            cv2.polylines(image, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
+            cv2.putText(img=image, 
+                        text=f"ID: {pos['id']}", 
+                        org=mid_point(pos['points'][0], pos['points'][2]), 
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, 
+                        fontScale=0.7, 
+                        color=(0, 0, 255), 
+                        thickness=2)
+
+        # כל נקודה שנבחרה לחנייה תסומן בעיגול
+        for pt in current_pos:
+            cv2.circle(image, pt, radius=5, color=(0, 255, 0), thickness=-1)
+
+        # מציג את התמונה ומפעיל את הevent listener
+        cv2.imshow("Image", image)
+        cv2.setMouseCallback("Image", mouseclick)
+
+        # אם נלחץ על התו q זה יסיים את התוכנית
+        k = cv2.waitKey(1)
+        if k == ord('q'):
+            break
+
+        # סוגר את כל החלונות
     cv2.destroyAllWindows()
 
-    return output_filename
 
-# Create binary image
-filename = "parking-lot.png"  # Replace with your file path
-output_file = create_binary_image(filename)
-print(f"Binary image saved at {output_file}")
+initial_parking_mark()
+# def initial_prediction():
+#     for pos in positionList:
+#         # פונקציה שמחזירה אם יש מכונית או לא
+#         prediction = make_prediction(f'parking_images/parking_no{pos["id"]}.png')
+#         pos['occupied'] = prediction == 'Car' 
+
