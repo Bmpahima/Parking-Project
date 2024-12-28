@@ -5,19 +5,22 @@ from ultralytics import YOLO
 
 from initial import cropped_img
 
-model = YOLO('yolov8l.pt')
+model = YOLO('best.pt')
+print(model.names)
+
+vehicle = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 cap = cv2.VideoCapture('car_test.mp4')
 
 with open('parking_coordinates.pkl', 'rb') as f:
     positionList = pickle.load(f)
-    
+
 def parking_prediction(img):
     for pos in positionList:
-        results = model.predict(source=cropped_img(img, pos['points']), conf=0.25)
-        print(results[0].boxes.cls)
-        print(results[0].names[67])
-        print(f'Parking ID: {pos["id"]} is {"occupied" if pos["occupied"] else "free"}')
+        cropped = cropped_img(img, pos['points'])
+        results = model.predict(source=cropped, conf=0.25)
+        detected_classes = results[0].boxes.cls.cpu().numpy() if results[0].boxes else []
+        pos['occupied'] = any(cls in vehicle for cls in detected_classes)
 
 def checkParkingSpace(img):
     free_parking_counter = 0
@@ -25,15 +28,13 @@ def checkParkingSpace(img):
     parking_prediction(img)
 
     for i, pos in enumerate(positionList):
-        if pos['occupied']:
-            cv2.polylines(img, [np.array(pos['points'], np.int32).reshape((-1, 1, 2))], isClosed=True, color=(0, 0, 255), thickness=2)
-        else:
-            cv2.polylines(img, [np.array(pos['points'], np.int32).reshape((-1, 1, 2))], isClosed=True, color=(0, 255, 0), thickness=2)
+        color = (0, 255, 0) if not pos['occupied'] else (0, 0, 255)
+        cv2.polylines(img, [np.array(pos['points'], np.int32).reshape((-1, 1, 2))], isClosed=True, color=color, thickness=2)
+        if not pos['occupied']:
             free_parking_counter += 1
 
-    totalSpaces = len(positionList)
-
-    return img, free_parking_counter, totalSpaces - free_parking_counter
+    total_spaces = len(positionList)
+    return img, free_parking_counter, total_spaces - free_parking_counter
 
 def generate_frames():
     while True:
@@ -51,4 +52,5 @@ def generate_frames():
     cap.release()
     cv2.destroyAllWindows()
 
+# הרץ את הפונקציה
 generate_frames()
