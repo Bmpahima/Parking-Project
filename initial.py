@@ -7,9 +7,12 @@ from ultralytics import YOLO
 
 
 save_dir = 'parking_images'
-original_img_path = 'parking.png'
+original_img_path = 'car_parking.jpg'
+
 vehicle_model = YOLO('vehicleModel.pt')
 license_plate_model = YOLO('modelLicensePlate.pt')
+
+reader = easyocr.Reader(['en'])
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
@@ -118,24 +121,27 @@ def initial_prediction():
         detected_classes = results[0].boxes.cls.cpu().tolist() if results[0].boxes else []
         print(detected_classes)
 
-       
+
+def predict_license_plate():
+    img = cropped_img(cv2.imread(original_img_path), positionList[0]['points'])
+
+    results = license_plate_model.predict(source=img, conf=0.25)
+    license_plate_coord = results[0].boxes.xyxy.cpu().tolist() if results[0].boxes else []
+    if license_plate_coord:
+        x1, y1, x2, y2 = results[0].boxes.xyxy.cpu().tolist()[0]
+        license_plate_points = [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
+        license_plate = cropped_img(img, license_plate_points)
+        license_plate_gray = cv2.cvtColor(license_plate, cv2.COLOR_BGR2GRAY)
+        _, license_plate_thresh = cv2.threshold(license_plate_gray, 120, 255, cv2.THRESH_BINARY_INV)
+        
+        cv2.imwrite('license_plate.png', license_plate_thresh)
+        result = reader.readtext('license_plate.png', detail=0, allowlist='0123456789')
+        for detection in result:
+            print(detection, '\n')
+
+
 if __name__ == "__main__":
     initial_parking_mark()
     initial_prediction()
+    predict_license_plate()
 
-
-    # for pos in positionList:
-    #     print(f'Parking ID: {pos["id"]} is {"occupied" if pos["occupied"] else "free"}')
-    #     print('---------------------------')
-
-# זיהוי הרכב:
-
-# def detect_vehicle():
-#     img = cv2.imread(original_img_path)
-#     for pos in positionList:
-#         cropped = cropped_img(img, pos['points'])
-#         results = vehicle_model.predict(source=cropped, conf=0.25)
-#         detected_classes = results[0].boxes.cls.cpu().tolist() if results[0].boxes else []
-#         print(detected_classes)
-
-# detect_vehicle()
