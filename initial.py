@@ -7,8 +7,9 @@ from ultralytics import YOLO
 
 
 save_dir = 'parking_images'
-original_img_path = 'first_frame.png'
-vehicle_model = YOLO('best.pt')
+original_img_path = 'parking.png'
+vehicle_model = YOLO('vehicleModel.pt')
+license_plate_model = YOLO('modelLicensePlate.pt')
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
@@ -109,13 +110,23 @@ def initial_parking_mark():
             break
 
     cv2.destroyAllWindows()
+
+def initial_prediction():
+    for pos in positionList:
+        cropped = cropped_img(cv2.imread(original_img_path), pos['points'])
+        results = vehicle_model.predict(source=cropped, conf=0.55)
+        detected_classes = results[0].boxes.cls.cpu().tolist() if results[0].boxes else []
+        print(detected_classes)
+
        
 if __name__ == "__main__":
     initial_parking_mark()
+    initial_prediction()
 
-    for pos in positionList:
-        print(f'Parking ID: {pos["id"]} is {"occupied" if pos["occupied"] else "free"}')
-        print('---------------------------')
+
+    # for pos in positionList:
+    #     print(f'Parking ID: {pos["id"]} is {"occupied" if pos["occupied"] else "free"}')
+    #     print('---------------------------')
 
 # זיהוי הרכב:
 

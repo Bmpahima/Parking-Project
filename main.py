@@ -2,7 +2,6 @@ import cv2
 import pickle
 import numpy as np
 from ultralytics import YOLO
-import time
 
 from initial import cropped_img, set_text_position
 
