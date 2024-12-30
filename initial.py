@@ -7,7 +7,7 @@ from ultralytics import YOLO
 
 
 save_dir = 'parking_images'
-original_img_path = 'parking.png'
+original_img_path = 'first_frame.png'
 vehicle_model = YOLO('best.pt')
 
 if not os.path.exists(save_dir):
@@ -110,19 +110,21 @@ def initial_parking_mark():
 
     cv2.destroyAllWindows()
        
-initial_parking_mark()
-    
+if __name__ == "__main__":
+    initial_parking_mark()
 
-for pos in positionList:
-    print(f'Parking ID: {pos["id"]} is {"occupied" if pos["occupied"] else "free"}')
-    print('---------------------------')
-
-def detect_vehicle():
-    img = cv2.imread(original_img_path)
     for pos in positionList:
-        cropped = cropped_img(img, pos['points'])
-        results = vehicle_model.predict(source=cropped, conf=0.25)
-        detected_classes = results[0].boxes.cls.cpu().tolist() if results[0].boxes else []
-        print('car' if 0 in detected_classes else 'no car')
+        print(f'Parking ID: {pos["id"]} is {"occupied" if pos["occupied"] else "free"}')
+        print('---------------------------')
 
-detect_vehicle()
+# זיהוי הרכב:
+
+# def detect_vehicle():
+#     img = cv2.imread(original_img_path)
+#     for pos in positionList:
+#         cropped = cropped_img(img, pos['points'])
+#         results = vehicle_model.predict(source=cropped, conf=0.25)
+#         detected_classes = results[0].boxes.cls.cpu().tolist() if results[0].boxes else []
+#         print(detected_classes)
+
+# detect_vehicle()
