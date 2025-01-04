@@ -4,8 +4,6 @@ import os
 import numpy as np
 import easyocr
 from ultralytics import YOLO
-import re
-import openai
 
 
 
