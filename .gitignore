@@ -173,5 +173,11 @@ cython_debug/
 *.h5
 .DS_Store
 *.pkl
+*.pt
+*.png
+*.jpg
+*.jpeg
+*.mp4
+
 
 env/
