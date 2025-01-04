@@ -41,6 +41,7 @@ def checkParkingSpace(img):
     total_spaces = len(positionList)
     return img, free_parking_counter, total_spaces - free_parking_counter
 
+
 def generate_frames():
     global frame_count, save_count
     while True:
