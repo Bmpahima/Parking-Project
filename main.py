@@ -5,8 +5,8 @@ from ultralytics import YOLO
 
 from initial import cropped_img, set_text_position
 
-model = YOLO('best.pt')
-print(model.names)
+vehicle_model = YOLO('vehicleModel.pt')
+print(vehicle_model.names)
 
 vehicle = [0, 1]
 
@@ -23,7 +23,7 @@ with open('parking_coordinates.pkl', 'rb') as f:
 def parking_prediction(img):
     for pos in positionList:
         cropped = cropped_img(img, pos['points'])
-        results = model.predict(source=cropped, conf=0.75, verbose=False)
+        results = vehicle_model.predict(source=cropped, conf=0.75, verbose=False)
         detected_classes = results[0].boxes.cls.cpu().numpy() if results[0].boxes else []
         pos['occupied'] = any(cls in vehicle for cls in detected_classes)
 
