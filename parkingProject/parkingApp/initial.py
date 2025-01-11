@@ -109,18 +109,11 @@ def save_to_db(name,payment,long,lat):
         lat=lat
     )
     parking_lot.save()
-
-
-
-
-
-
-    # parking_spots = models.IntegerField()
-    # name = models.CharField(max_length=50)
-    # payment = models.BooleanField(default=False)
-    # frame_image = models.CharField(max_length=250)
-    # long = models.DecimalField(max_digits=9, decimal_places=6)
-    # lat = models.DecimalField(max_digits=9, decimal_places=6)
+    parkings = []
+    for p in positionList:
+        new_parking = Parking(occupied=False,coords=p['points'],parking_lot=parking_lot)
+        parkings.append(new_parking)
+    Parking.objects.bulk_create(parkings) ##sending to db in one time
 
 
 if __name__ == "__main__":
@@ -131,8 +124,10 @@ if __name__ == "__main__":
             exit(1)
 
         cv2.imwrite(original_img_path, frame)
+    
 
     initial_parking_mark()
+    entered_q = input("Did you finish to mark your parking spots? ")
 
     
 

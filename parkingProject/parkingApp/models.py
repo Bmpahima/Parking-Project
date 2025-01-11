@@ -8,8 +8,8 @@ class ParkingLot(models.Model):
     name = models.CharField(max_length=50)
     payment = models.BooleanField(default=False)
     frame_image = models.CharField(max_length=250)
-    long = models.DecimalField(max_digits=9, decimal_places=6)
-    lat = models.DecimalField(max_digits=9, decimal_places=6)
+    long = models.DecimalField(max_digits=9, decimal_places=6,null=True)
+    lat = models.DecimalField(max_digits=9, decimal_places=6,null=True)
 
     def __str__(self):
         return f"{self.id} - {self.name}"
