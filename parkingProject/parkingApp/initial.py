@@ -2,17 +2,16 @@ import cv2
 import pickle
 import os
 import numpy as np
-import easyocr
-from ultralytics import YOLO
+from YoloModels.YoloModelManager import ModelManager
+from util.image_processing import crop_image_by_points, set_text_position, get_first_frame
+from util.license_api import get_car_detail
 
 
-save_dir = 'parking_images'
-original_img_path = 'car_parking.jpg'
+save_dir = 'images/parking_images'
 
-vehicle_model = YOLO('vehicleModel.pt')
-license_plate_model = YOLO('modelLicensePlate.pt')
-
-reader = easyocr.Reader(['en'])
+# ######### אם נרצה שזו תהיה תמונה ספציפית: ########
+# נשנה את הנתיב הבא לנתיב של התמונה שלנו
+original_img_path = 'images/fourcars.jpg'
 
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
@@ -30,29 +29,10 @@ def get_next_id():
     return max([pos['id'] for pos in positionList]) + 1 if positionList else 0
 
 
-def set_text_position(point1, point2):
-    mid_x = ((point1[0] + point2[0]) / 2) - 24
-    mid_y = ((point1[1] + point2[1]) / 2)
-    return (int(mid_x), int(mid_y)) 
-
-
-def cropped_img(img, points):
-    mask = np.zeros(img.shape[:2], dtype=np.uint8)
-
-    points = np.array(points, dtype=np.int32)
-    cv2.fillPoly(mask, [points], 255)
-
-    masked_img = cv2.bitwise_and(img, img, mask=mask)
-
-    x, y, w, h = cv2.boundingRect(points)
-    cropped_img = masked_img[y:y+h, x:x+w]
-    return cropped_img
-
-
 def save_img(img, points, id):
     save_path = os.path.join(save_dir, f'parking_no{id}.png')
 
-    cv2.imwrite(save_path, cropped_img(img, points))
+    cv2.imwrite(save_path, crop_image_by_points(img, points))
     print(f'Saved cropped image: {save_path}')
 
 
@@ -67,7 +47,8 @@ def mouseclick(events, x, y, flags, params):
             positionList.append({
                 "id": get_next_id(),
                 "points": current_pos,
-                "occupied": False
+                "occupied": False,
+                "license_number": "not found"
             })
             save_img(img=cv2.imread(original_img_path), 
                      points=current_pos,
@@ -86,6 +67,7 @@ def mouseclick(events, x, y, flags, params):
 
     with open('parking_coordinates.pkl', 'wb') as f:
         pickle.dump(positionList, f)
+
 
 def initial_parking_mark():
     while True:
@@ -114,34 +96,39 @@ def initial_parking_mark():
 
     cv2.destroyAllWindows()
 
-def initial_prediction():
-    for pos in positionList:
-        cropped = cropped_img(cv2.imread(original_img_path), pos['points'])
-        results = vehicle_model.predict(source=cropped, conf=0.55)
-        detected_classes = results[0].boxes.cls.cpu().tolist() if results[0].boxes else []
-        print(detected_classes)
-
-
-def predict_license_plate():
-    img = cropped_img(cv2.imread(original_img_path), positionList[0]['points'])
-
-    results = license_plate_model.predict(source=img, conf=0.25)
-    license_plate_coord = results[0].boxes.xyxy.cpu().tolist() if results[0].boxes else []
-    if license_plate_coord:
-        x1, y1, x2, y2 = results[0].boxes.xyxy.cpu().tolist()[0]
-        license_plate_points = [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
-        license_plate = cropped_img(img, license_plate_points)
-        license_plate_gray = cv2.cvtColor(license_plate, cv2.COLOR_BGR2GRAY)
-        _, license_plate_thresh = cv2.threshold(license_plate_gray, 120, 255, cv2.THRESH_BINARY_INV)
-        
-        cv2.imwrite('license_plate.png', license_plate_thresh)
-        result = reader.readtext('license_plate.png', detail=0, allowlist='0123456789')
-        for detection in result:
-            print(detection, '\n')
-
 
 if __name__ == "__main__":
-    initial_parking_mark()
-    initial_prediction()
-    predict_license_plate()
 
+    if not os.path.exists(original_img_path):
+        frame = get_first_frame("images/sce_parking.mp4")
+        if frame is None:
+            exit(1)
+
+        cv2.imwrite(original_img_path, frame)
+
+    initial_parking_mark()
+
+    model = ModelManager()
+
+    parking_image = cv2.imread(original_img_path)
+
+    for i in range(len(positionList)):
+        image = crop_image_by_points(parking_image, positionList[i]["points"]) # the image of the parking
+        vehicle_predictions = model.free_or_occupied_prediction(image)
+        print(f" ========== car number {i} car prediction: ==========\n")
+        print(vehicle_predictions)
+
+        if vehicle_predictions and vehicle_predictions[0][0] in [0, 1]:
+            plate_prediction = model.license_plate_prediction(image)
+            print(f" ========== car number {i} license prediction: ==========\n")
+            print(plate_prediction)
+
+            if plate_prediction:
+                license_plate_img = crop_image_by_points(image, plate_prediction[1])
+                number_prediction = model.license_number_prediction(license_plate_img)
+                print(f"========== car number {i} number prediction: ==========\n")
+                print(number_prediction)
+
+                if number_prediction:
+                    vehicle_type = get_car_detail(number_prediction[1])
+                    print(vehicle_type)

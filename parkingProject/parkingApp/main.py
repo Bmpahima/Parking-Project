@@ -1,58 +1,57 @@
 import cv2
 import pickle
 import numpy as np
-from ultralytics import YOLO
+from YoloModels.YoloModelManager import ModelManager
+from util.image_processing import crop_image_by_points, set_text_position
 
-from initial import cropped_img, set_text_position
-
-vehicle_model = YOLO('vehicleModel.pt')
-print(vehicle_model.names)
+model = ModelManager()
 
 vehicle = [0, 1]
 
-cap = cv2.VideoCapture('parking.mp4')
-fps = cap.get(cv2.CAP_PROP_FPS)
+cap = cv2.VideoCapture('images/sce_parking.mp4')
 
+fps = cap.get(cv2.CAP_PROP_FPS)
 frame = int(fps * 3)
 frame_count = 0
-save_count = 0
 
 with open('parking_coordinates.pkl', 'rb') as f:
     positionList = pickle.load(f)
 
 def parking_prediction(img):
     for pos in positionList:
-        cropped = cropped_img(img, pos['points'])
-        results = vehicle_model.predict(source=cropped, conf=0.75, verbose=False)
-        detected_classes = results[0].boxes.cls.cpu().numpy() if results[0].boxes else []
-        pos['occupied'] = any(cls in vehicle for cls in detected_classes)
+        cropped_parking_img = crop_image_by_points(img, pos['points'])
+        results = model.free_or_occupied_prediction(cropped_parking_img, conf=0.80)
+        if results:
+            detected_classes = results[0]
+            pos['occupied'] = any(cls in vehicle for cls in detected_classes)
 
-def checkParkingSpace(img):
+
+def liveParkingDetection(img):
     free_parking_counter = 0
 
     parking_prediction(img)
 
     for i, pos in enumerate(positionList):
-        # color = (0, 255, 0) if not pos['occupied'] else (0, 0, 255)
-        # cv2.polylines(img, [np.array(pos['points'], np.int32).reshape((-1, 1, 2))], isClosed=True, color=color, thickness=2)
         if not pos['occupied']:
             free_parking_counter += 1
 
     total_spaces = len(positionList)
-    return img, free_parking_counter, total_spaces - free_parking_counter
+    occupied_parking_spaces = total_spaces - free_parking_counter
+
+    return img, free_parking_counter, occupied_parking_spaces
 
 
 def generate_frames():
     global frame_count, save_count
     while True:
+
         success, img = cap.read()
         if not success:
             break
-
+        
         if frame_count % frame == 0:    
-            img, free_spaces, occupied_spaces = checkParkingSpace(img)
-            print(f'Free spaces: {free_spaces}, Occupied spaces: {occupied_spaces}')
-            save_count += 1
+            img, free_spaces, occupied_spaces = liveParkingDetection(img)
+            frame_count = 0
 
         for pos in positionList:
             pts = np.array(pos['points'], np.int32).reshape((-1, 1, 2))
@@ -65,6 +64,9 @@ def generate_frames():
                         fontScale=0.7, 
                         color=(0, 0, 255), 
                         thickness=2)
+            
+        cv2.putText(img, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         cv2.imshow('Parking Detection', img)
 
