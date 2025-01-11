@@ -4,7 +4,6 @@ import numpy as np
 from YoloModels.YoloModelManager import ModelManager
 from util.image_processing import crop_image_by_points, set_text_position
 
-
 model = ModelManager()
 
 vehicle = [0, 1]
@@ -45,11 +44,11 @@ def liveParkingDetection(img):
 def generate_frames():
     global frame_count, save_count
     while True:
+
         success, img = cap.read()
         if not success:
             break
         
-
         if frame_count % frame == 0:    
             img, free_spaces, occupied_spaces = liveParkingDetection(img)
             frame_count = 0
