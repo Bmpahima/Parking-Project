@@ -5,7 +5,8 @@ from django.core.validators import MinLengthValidator,MaxLengthValidator
 
 
 
-class SignUpForm(forms.ModelForm):
+class UserRegistrationForm(forms.ModelForm):
+    
     password = forms.CharField(
         widget=forms.PasswordInput,
         required=True,
@@ -45,3 +46,8 @@ class SignUpForm(forms.ModelForm):
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError("This email is already in use.")
         return email
+    
+
+class UserLoginForm(forms.Form):
+    email = forms.EmailField()
+    password = forms.CharField(widget=forms.PasswordInput)
