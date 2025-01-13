@@ -1,9 +1,7 @@
 from django.db import models
-from django.contrib.postgres.fields import ArrayField
 
 
 class ParkingLot(models.Model):
-
     parking_spots = models.IntegerField()
     name = models.CharField(max_length=50)
     payment = models.BooleanField(default=False)
@@ -16,13 +14,13 @@ class ParkingLot(models.Model):
 
 
 class Parking(models.Model):
-
     occupied = models.BooleanField(default=False)
-    coords = ArrayField(models.DecimalField(decimal_places=8,max_digits=9),size=4)
+    coords = models.JSONField(models.IntegerField())
     parking_lot = models.ForeignKey(ParkingLot,on_delete=models.CASCADE,related_name="parkings")
 
     def __str__(self):
         return f"{self.id}"
+
 
 class User(models.Model):
     first_name = models.CharField(max_length=100)
