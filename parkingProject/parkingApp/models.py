@@ -26,7 +26,7 @@ class User(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField(unique=True, max_length=250)
-    phone_number = models.CharField(max_length=10)
+    phone_number = models.CharField(max_length=10,unique=True)
     password = models.TextField()
     license_number = models.CharField(max_length=8)
     car_type = models.CharField(max_length=50, null=True)
