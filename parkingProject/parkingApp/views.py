@@ -37,7 +37,7 @@ class ParkingLotProvider (View):
         except Exception as e:
             pass
 
-class RegisterUserview(forms.Mode):
+class RegisterUserview(forms.Model):
     email = forms.EmailField(required=True,label="Email Address",help_text="Please enter a valid email.")
     phone_number = forms.CharField(required=True, min_length=10, max_length=10, label="Phone Number")
     password = forms.PasswordInput
