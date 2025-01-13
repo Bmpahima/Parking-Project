@@ -1,7 +1,10 @@
 import os
 import django
 
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'parkingProject.settings')
+
 django.setup()
+
 
 import cv2
 import pickle
@@ -11,7 +14,7 @@ from parkingApp.util.image_processing import set_text_position, get_first_frame
 from parkingApp.models import Parking, ParkingLot
 
 
-original_img_path = './parkingApp/images/fourcars.jpg'
+original_img_path = './parkingApp/images/meir.png'
 
 try:
     with open('parking_coordinates.pkl', 'rb') as f:
@@ -76,6 +79,7 @@ def initial_parking_mark():
         for pt in current_pos:
             cv2.circle(image, pt, radius=5, color=(0, 255, 0), thickness=-1)
 
+        cv2.namedWindow("Image", cv2.WINDOW_NORMAL) 
         cv2.imshow("Image", image)
         cv2.setMouseCallback("Image", mouseclick)
 
@@ -107,12 +111,12 @@ def save_to_db(name, payment, long, lat):
 
 if __name__ == "__main__":
 
-    # if not os.path.exists(original_img_path):
-    #     frame = get_first_frame("images/sce_parking.mp4")
-    #     if frame is None:
-    #         exit(1)
+    if not os.path.exists(original_img_path):
+        frame = get_first_frame("./parkingApp/images/parking.mp4")
+        if frame is None:
+            exit(1)
 
-    #     cv2.imwrite(original_img_path, frame)
+        cv2.imwrite(original_img_path, frame)
 
     initial_parking_mark()
 
