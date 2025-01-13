@@ -116,7 +116,40 @@ if __name__ == "__main__":
 
     initial_parking_mark()
 
-    model = ModelManager()
+    entered_q = input("Did you finish to mark your parking spots? (y/n)").strip()
+
+    if entered_q =='y' or entered_q =='Y':
+        try:
+            name = input("What's the parking lot name? ").strip()
+            pay = input("Does the parking lot have some payments? (y/n) ").strip()
+
+            if pay =='y' or pay =='Y':
+                pay = True
+            elif pay == 'n' or pay == 'N':
+                pay = False
+
+            long = float(input("What's the long of the parking lot? ").strip())
+            lat = float(input("What's the lat of the parking lot? ").strip())
+
+            save_to_db(name, pay, long, lat)
+
+            if os.path.exists('parking_coordinates.pkl'):
+                os.remove('parking_coordinates.pkl')
+
+        except Exception as e:
+            print("Error occoured: ", e)
+
+    elif entered_q =='n' or entered_q =='N':
+        pass
+
+
+
+
+
+
+    
+
+    # model = ModelManager()
 
     # parking_image = cv2.imread(original_img_path)
 
