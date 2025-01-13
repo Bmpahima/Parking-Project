@@ -2,9 +2,9 @@ from ultralytics import YOLO
 import math
 
 class ModelManager ():
-    def __init__(self, vehicle_model_path="YoloModels/VehiclesModel.pt",
-                 lp_model_path="YoloModels/LicensePlateModel.pt",
-                 numbers_models_path="YoloModels/LicensePlateNumModel.pt"):
+    def __init__(self, vehicle_model_path="./parkingApp/YoloModels/VehiclesModel.pt",
+                 lp_model_path="./parkingApp/YoloModels/LicensePlateModel.pt",
+                 numbers_models_path="./parkingApp/YoloModels/LicensePlateNumModel.pt"):
         self.vehicle_model = YOLO(vehicle_model_path, verbose=False)
         self.license_plate_model = YOLO(lp_model_path,  verbose=False)
         self.license_number_model = YOLO(numbers_models_path,  verbose=False)
