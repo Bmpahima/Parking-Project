@@ -17,10 +17,10 @@ class Parking(models.Model):
     occupied = models.BooleanField(default=False)
     coords = models.JSONField(models.IntegerField())
     parking_lot = models.ForeignKey(ParkingLot,on_delete=models.CASCADE,related_name="parkings")
-
+    license_number = models.CharField(max_length=8, null=True)
+    
     def __str__(self):
         return f"{self.id}"
-
 
 class User(models.Model):
     first_name = models.CharField(max_length=100)
