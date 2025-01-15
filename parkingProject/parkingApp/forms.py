@@ -2,7 +2,8 @@ from django import forms
 from django.core.validators import RegexValidator
 from .models import User
 from django.core.validators import MinLengthValidator,MaxLengthValidator
-
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate,login
 
 
 class UserRegistrationForm(forms.ModelForm):
@@ -44,10 +45,27 @@ class UserRegistrationForm(forms.ModelForm):
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
-            raise forms.ValidationError("This email is already in use.")
+            raise forms.ValidationError("This email is already in use, Please try another email.")
         return email
     
 
 class UserLoginForm(forms.Form):
-    email = forms.EmailField()
+    username = forms.CharField()
     password = forms.CharField(widget=forms.PasswordInput)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        username = cleaned_data.get('username')
+        password = cleaned_data.get('password')
+
+        if not username or not password:
+            raise forms.ValidationError("Both username and password are required!!")
+
+        user = authenticate(username=username, password=password)
+        if user is None:
+            raise forms.ValidationError("Invalid username or password, please try again.")
+        
+        login(self.request, user)
+
+        return cleaned_data
+    
