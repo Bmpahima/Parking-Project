@@ -11,36 +11,27 @@ class UserRegistrationForm(forms.ModelForm):
     password = forms.CharField(
         widget=forms.PasswordInput,
         required=True,
-        validators=[
-            RegexValidator(
-                regex=r'^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).{8,}$',
-                message="Password must contain at least 8 characters, including 1 uppercase letter, 1 lowercase letter, and 1 number."
-            )
-        ]
+        validators=[...]
     )
     phone_number = forms.CharField(
         max_length=10,
         required=True,
-        validators=[
-            RegexValidator(
-                regex=r'^05\d{8}$',
-                message="Phone number must start with '05' and contain 10 digits."
-            )
-        ]
+        validators=[...]
     )
-    license_plate_number = forms.CharField(
+    license_number = forms.CharField(  # שים לב לשם השדה כאן
         max_length=8,
         required=True,
         validators=[
             RegexValidator(
-            regex=r'^\d{7,8}$',
-            message="license plate number contain 7-8 digits."
-            )]
-        )
+                regex=r'^\d{7,8}$',
+                message="License number must contain 7-8 digits."
+            )
+        ]
+    )
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email', 'phone_number', 'password', 'license_plate']
+        fields = ['first_name', 'last_name', 'email', 'phone_number', 'password', 'license_number']  # גם כאן
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
