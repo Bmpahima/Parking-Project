@@ -4,11 +4,11 @@ from django.http import JsonResponse
 from django.forms import ModelForm
 from django.views import View
 from django.http import JsonResponse
-from .forms import UserRegistrationForm, UserLoginForm
-from .models import User
+# from .forms import UserRegistrationForm, UserLoginForm
+# from .models import User
 from django.contrib.auth.hashers import check_password
 from rest_framework.authtoken.models import Token
-from .models import Parking, ParkingLot,User
+from .models import Parking, ParkingLot
 
 # Create your views here.
 
@@ -16,7 +16,7 @@ class ParkingLotProvider (View):
     def get(self, request, id):
         try:
             # החניון 
-            selected_parking_lot = ParkingLot.objects.get(pk=id)[0]
+            selected_parking_lot = ParkingLot.objects.get(pk=id)
             
             # רשימת החניות שלו
             parkings = selected_parking_lot.parkings.all()
@@ -44,45 +44,45 @@ class ParkingLotProvider (View):
 
 
 
-class UserRegistrationView(View):
+# class UserRegistrationView(View):
 
-    def post(self, request):
+#     def post(self, request):
 
 
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
+#         form = UserRegistrationForm(request.POST)
+#         if form.is_valid():
 
-            user = form.save(commit=False) #עדיין לא שומר את הסיסמה בגלל הקומיט
-            user.set_password(form.cleaned_data['password']) #ככה אני מצפין את הסיסמה - עם סט פסוורד
-            user.save() #עכשיו הוא שומר
-            token, created = Token.objects.get_or_create(user=user) # בודק אם למשתמש יש טוקן קיים - כלומר 
+#             user = form.save(commit=False) #עדיין לא שומר את הסיסמה בגלל הקומיט
+#             user.set_password(form.cleaned_data['password']) #ככה אני מצפין את הסיסמה - עם סט פסוורד
+#             user.save() #עכשיו הוא שומר
+#             token, created = Token.objects.get_or_create(user=user) # בודק אם למשתמש יש טוקן קיים - כלומר 
 
-            return JsonResponse({'token': token.key}, status=200)
+#             return JsonResponse({'token': token.key}, status=200)
         
-        return JsonResponse({'errors': form.errors}, status=400)
+#         return JsonResponse({'errors': form.errors}, status=400)
 
-class UserLoginView(View):
+# class UserLoginView(View):
 
-    def post(self, request):
-        form = UserLoginForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password']
+#     def post(self, request):
+#         form = UserLoginForm(request.POST)
+#         if form.is_valid():
+#             username = form.cleaned_data['username']
+#             password = form.cleaned_data['password']
 
-            try:
-                user = User.objects.get(username=username)
-            except User.DoesNotExist:
-                return JsonResponse({
-                'error': 'Invalid Username.'
-                },
-                 status=400)
+#             try:
+#                 user = User.objects.get(username=username)
+#             except User.DoesNotExist:
+#                 return JsonResponse({
+#                 'error': 'Invalid Username.'
+#                 },
+#                  status=400)
 
-            if check_password(password, user.password):
-                token, created = Token.objects.get_or_create(user=user)
-                return JsonResponse({'token': token.key}, status=200)
-            else:
-                return JsonResponse({'error': 'Invalid email or password.'}, status=400)
-        return JsonResponse({'errors': form.errors}, status=400)
+#             if check_password(password, user.password):
+#                 token, created = Token.objects.get_or_create(user=user)
+#                 return JsonResponse({'token': token.key}, status=200)
+#             else:
+#                 return JsonResponse({'error': 'Invalid email or password.'}, status=400)
+#         return JsonResponse({'errors': form.errors}, status=400)
 
             
 

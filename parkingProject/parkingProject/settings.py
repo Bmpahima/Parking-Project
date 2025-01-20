@@ -25,7 +25,9 @@ SECRET_KEY = 'django-insecure-##$b=h@tezn10r3vjrs7u3sa&@krc$qb8(wci*8=e*u!*i)_zv
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '*'
+]
 
 
 # Application definition
@@ -39,7 +41,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'parkingApp',
     'corsheaders',
+    'parkingAuth',
     'rest_framework.authtoken',
+
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

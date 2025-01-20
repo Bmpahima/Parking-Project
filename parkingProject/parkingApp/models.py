@@ -22,20 +22,20 @@ class Parking(models.Model):
     def __str__(self):
         return f"{self.id}"
 
-class User(models.Model):
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    email = models.EmailField(unique=True, max_length=250)
-    username = models.CharField(unique=True,max_length=35,null =True)
-    phone_number = models.CharField(max_length=10,unique=True)
-    password = models.TextField()
-    license_number = models.CharField(max_length=8)
-    car_type = models.CharField(max_length=50, null=True)
-    car_year = models.PositiveIntegerField(null=True)
-    car_color = models.CharField(max_length=50, null=True)
-    car_model = models.CharField(max_length=100, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+# class User(models.Model):
+#     first_name = models.CharField(max_length=100)
+#     last_name = models.CharField(max_length=100)
+#     email = models.EmailField(unique=True, max_length=250)
+#     username = models.CharField(unique=True ,max_length=35,null =True)
+#     phone_number = models.CharField(max_length=10,unique=True)
+#     password = models.TextField()
+#     license_number = models.CharField(max_length=8)
+#     car_type = models.CharField(max_length=50, null=True)
+#     car_year = models.PositiveIntegerField(null=True)
+#     car_color = models.CharField(max_length=50, null=True)
+#     car_model = models.CharField(max_length=100, null=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+#     def __str__(self):
+#         return f"{self.first_name} {self.last_name}"
