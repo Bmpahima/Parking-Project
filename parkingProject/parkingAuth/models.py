@@ -2,7 +2,7 @@ from django.db import models
 from django.utils.timezone import now
 
 
-class UserAuthParking(models.Model):
+class parkingAuth(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField(unique=True, max_length=250)

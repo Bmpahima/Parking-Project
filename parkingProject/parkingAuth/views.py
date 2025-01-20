@@ -6,7 +6,7 @@ import json
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from parkingApp.util.license_api import get_car_detail
-from .models import UserAuthParking
+from .models import parkingAuth
 import bcrypt
 # פונקציה להצפנת סיסמה
 def hash_password(plain_password):
@@ -30,7 +30,7 @@ class UserRegistrationView(View):
                 color = car_details.get('color')
                 model = car_details.get('model')
                 print(year , model ,car_type ,color)
-                new_user = UserAuthParking.objects.create(
+                new_user = parkingAuth.objects.create(
                     first_name = form_data['first_name'],
                     last_name = form_data['last_name'],
                     email = form_data['email'],
