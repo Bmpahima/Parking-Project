@@ -17,13 +17,16 @@ from django.utils.decorators import method_decorator
 from parkingApp.util.license_api import get_car_detail
 from .models import parkingAuth
 import bcrypt
+
+
 # פונקציה להצפנת סיסמה
 def hash_password(plain_password):
-    # יצירת salt
     salt = bcrypt.gensalt()
-    # הצפנת הסיסמה
     hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), salt)
     return hashed_password
+
+
+#פונקציית הרשמה
 @method_decorator(csrf_exempt, name='dispatch')
 class UserRegistrationView(View):
     def post(self, request):
@@ -44,31 +47,22 @@ class UserRegistrationView(View):
                     last_name = form_data['last_name'],
                     email = form_data['email'],
                     phone_number = form_data['phone_number'],
-                    password = form_data['password'],
+                    password = hash_password(form_data['password']),
                     license_number = form_data['lisence_plate_number'],
                     car_type = car_type,
                     car_year = year,
                     car_color = color,
                     car_model = model
             )
-           
     
-
-            # החזרת תשובה במידה וכל הנתונים נקלטו בהצלחה
             return JsonResponse({'message': 'User data processed successfully!'}, status=200)
 
         except json.JSONDecodeError:
-            # טיפול בשגיאה בפורמט JSON
             return JsonResponse({'error': 'Invalid JSON format!'}, status=400)
 
         except Exception as e:
-            # טיפול בשגיאות לא צפויות
             print(f"Unexpected error: {e}")
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
-
-        # תשובה ברירת מחדל, במידה ולא טופל מקרה מסוים
-        return JsonResponse({'error': 'Unknown error occurred'}, status=500)
-# Create your views here.
 
 class ParkingLotProvider (View):
     def get(self, request, id):
