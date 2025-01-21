@@ -25,9 +25,13 @@ class UserRegistrationView(View):
             form_data = json.loads(request.body)
             print(form_data)
             lisence_plate_number = form_data['lisence_plate_number']
+
             car_details = get_car_detail(lisence_plate_number)
             
             if car_details :
+                if parkingAuth.objects.filter(license_number=lisence_plate_number).exists():
+                    return JsonResponse({'error': f'Car is already exists: {str(lisence_plate_number)}'}, status=400)
+                
                 year = car_details.get('year')
                 car_type = car_details.get('type')
                 color = car_details.get('color')
@@ -44,7 +48,10 @@ class UserRegistrationView(View):
                     car_year = year,
                     car_color = color,
                     car_model = model
-            )
+                )
+
+            else: 
+                 return JsonResponse({'error': f'No such car: {str(lisence_plate_number)}'}, status=400)
     
             return JsonResponse({'message': 'User data processed successfully!'}, status=200)
 
@@ -61,7 +68,7 @@ class UserRegistrationView(View):
 
 #פונקציית התחברות
 @method_decorator(csrf_exempt, name='dispatch')
-class UserRegistrationView(View):
+class UserLoginView(View):
     def post(self, request):
         try:
             form_data = json.loads(request.body)
