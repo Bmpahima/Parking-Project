@@ -72,13 +72,16 @@ class ParkingLotProvider (View):
             
             # רשימת החניות שלו
             parkings = selected_parking_lot.parkings.all()
-
+            #יצירת מילון למידע מהחניון
+            #Parking name = שם החניון
+            #parking spots - כמות מקומות החנייה
+            #coords - קאורדינטות
             parking_lot_dict = {
                 "parkingName": selected_parking_lot.name,
                 "parkingSpots": selected_parking_lot.parking_spots,
                 "coords": [selected_parking_lot.lat, selected_parking_lot.long]
             }
-
+            #עיבוד רשימת מקומות החניה
             parkings_list = []
 
             for park in parkings: 
