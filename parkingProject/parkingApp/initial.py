@@ -14,7 +14,7 @@ from parkingApp.util.image_processing import set_text_position, get_first_frame
 from parkingApp.models import Parking, ParkingLot
 
 
-original_img_path = './parkingApp/images/meir.png'
+original_img_path = './parkingApp/images/fourcars.jpg'
 
 try:
     with open('parking_coordinates.pkl', 'rb') as f:
