@@ -68,8 +68,11 @@ class ParkingLotProvider(View):
 
         except Exception as e:
             pass
+
+
 class SaveParking(View):
-    def post(self,request,id,savetime):
+
+    def post(self, request, id, savetime):
         try:
             selected_parking_lot = Parking.objects.get(pk=id)
             if selected_parking_lot.occupied or selected_parking_lot.is_saved:
@@ -82,6 +85,9 @@ class SaveParking(View):
             if savetime == 'hour':
                 selected_parking_lot.is_saved = True
                 selected_parking_lot.reserved_until = datetime.now() + timedelta(hours=1)
+
+            return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
+
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
             
