@@ -8,13 +8,12 @@ from django.utils.decorators import method_decorator
 from parkingApp.util.license_api import get_car_detail
 from .models import parkingAuth
 import bcrypt
-from django.contrib.auth.hashers import check_password
 
 # פונקציה להצפנת סיסמה
 def hash_password(plain_password):
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), salt)
-    return hashed_password
+    return hashed_password.decode('utf-8')
 
 
 #פונקציית הרשמה
@@ -40,7 +39,7 @@ class UserRegistrationView(View):
                 new_user = parkingAuth.objects.create(
                     first_name = form_data['first_name'],
                     last_name = form_data['last_name'],
-                    email = form_data['email'],
+                    email = form_data['email'].lower(),
                     phone_number = form_data['phone_number'],
                     password = hash_password(form_data['password']),
                     license_number = form_data['lisence_plate_number'],
@@ -49,7 +48,6 @@ class UserRegistrationView(View):
                     car_color = color,
                     car_model = model
                 )
-
             else: 
                  return JsonResponse({'error': f'No such car: {str(lisence_plate_number)}'}, status=400)
     
@@ -72,8 +70,10 @@ class UserLoginView(View):
     def post(self, request):
         try:
             form_data = json.loads(request.body)
-            email_form_data = form_data['email']
+            email_form_data = form_data['email'].lower()
             password_form_data = form_data['password']
+
+            print(email_form_data, password_form_data)
 
             # בדיקה אם המשתמש קיים
             try:
@@ -82,7 +82,7 @@ class UserLoginView(View):
                 return JsonResponse({'error': 'User does not exist!'}, status=401)
 
             # אימות הסיסמה
-            if check_password(password_form_data, user.password):
+            if bcrypt.checkpw(password_form_data.encode('utf-8'), user.password.encode('utf-8')):
                 return JsonResponse({'success': 'User logged in successfully!'}, status=200)
             else:
                 return JsonResponse({'error': 'Invalid password!'}, status=401)
