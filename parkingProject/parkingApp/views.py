@@ -21,14 +21,20 @@ class AllParkingLot (View):
                     "latitude": pl.lat,
                     "longitude": pl.long,
                     "parking_spots": pl.parking_spots,
-                    "freeSpots": int(free_spots)
+                    "freeSpots": int(free_spots),
+                    "id":pl.id
                 }
                 parking_lot_result.append(current_pl)
 
-            return JsonResponse(parking_lot_result, status=200)
+            return JsonResponse(parking_lot_result, status=200, safe=False)
 
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "No Parking Lots Available."}, status=500)
+
+
+
+
+
 
 class ParkingLotProvider (View):
     def get(self, request, id):
@@ -38,14 +44,18 @@ class ParkingLotProvider (View):
             
             # רשימת החניות שלו
             parkings = selected_parking_lot.parkings.all()
-
+            free_spots = selected_parking_lot.parking_spots - selected_parking_lot.parkings.filter(occupied=True).count()
             parking_lot_dict = {
-                "parkingName": selected_parking_lot.name,
-                "parkingSpots": selected_parking_lot.parking_spots,
-                "coords": [selected_parking_lot.lat, selected_parking_lot.long]
+                "id": selected_parking_lot.id,
+                "name": selected_parking_lot.name,
+                "parking_spots": selected_parking_lot.parking_spots,
+                "latitude"  : selected_parking_lot.lat,
+                "longitude" :  selected_parking_lot.long,
+                "freeSpots": int(free_spots),
             }
 
             parkings_list = []
+
 
             for park in parkings: 
                 current_park = {
@@ -54,8 +64,8 @@ class ParkingLotProvider (View):
                     "license_number": park.license_number
                 }
                 parkings_list.append(current_park)
-
-            return JsonResponse({"parkinglot": parking_lot_dict, "parkings": parkings_list})
+            parking_lot_dict["parkings"] = parkings_list
+            return JsonResponse(parking_lot_dict, status=200, safe=False)
 
         except Exception as e:
             pass
