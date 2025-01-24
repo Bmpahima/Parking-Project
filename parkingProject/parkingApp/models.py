@@ -21,15 +21,10 @@ class Parking(models.Model):
     coords = models.JSONField(models.IntegerField())
     parking_lot = models.ForeignKey(ParkingLot,on_delete=models.CASCADE,related_name="parkings")
     license_number = models.CharField(max_length=8, null=True)
-<<<<<<< HEAD
-    
-    
-=======
     is_saved = models.BooleanField(default=False)
     reserved_until = models.DateTimeField(null=True, blank=True)
     driver = models.OneToOneField(parkingAuth,related_name='parking',null = True,on_delete=models.SET_NULL)
 
->>>>>>> MEIR-BRANCH
     def __str__(self):
         return f"{self.id}"
 
