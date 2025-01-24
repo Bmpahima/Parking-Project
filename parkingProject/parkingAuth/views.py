@@ -36,6 +36,7 @@ class UserRegistrationView(View):
                 color = car_details.get('color')
                 model = car_details.get('model')
                 print(year , model ,car_type ,color)
+
                 new_user = parkingAuth.objects.create(
                     first_name = form_data['first_name'],
                     last_name = form_data['last_name'],
@@ -48,10 +49,26 @@ class UserRegistrationView(View):
                     car_color = color,
                     car_model = model
                 )
+
+                new_user.is_active = True
+                new_user.save()
+
+                return JsonResponse({
+                    'success': 'User logged in successfully!',
+                    'user': {
+                        'id': new_user.id,
+                        'fname': new_user.first_name,
+                        'lname': new_user.last_name,
+                        'email': new_user.email,
+                        'phoneNumber': new_user.phone_number,
+                        'lisenceNumber': new_user.license_number
+                    },
+                    'isAdmin': new_user.is_admin 
+                }, status=200)
             else: 
                  return JsonResponse({'error': f'No such car: {str(lisence_plate_number)}'}, status=400)
-    
-            return JsonResponse({'message': 'User data processed successfully!'}, status=200)
+            
+            
 
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON format!'}, status=400)
@@ -59,9 +76,6 @@ class UserRegistrationView(View):
         except Exception as e:
             print(f"Unexpected error: {e}")
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
-
-
-
 
 
 #פונקציית התחברות
@@ -83,7 +97,21 @@ class UserLoginView(View):
 
             # אימות הסיסמה
             if bcrypt.checkpw(password_form_data.encode('utf-8'), user.password.encode('utf-8')):
-                return JsonResponse({'success': 'User logged in successfully!'}, status=200)
+                user.is_active = True
+                user.save()
+                return JsonResponse({
+                    'success': 'User logged in successfully!',
+                    'user': {
+                        'id': user.id,
+                        'fname': user.first_name,
+                        'lname': user.last_name,
+                        'email': user.email,
+                        'phoneNumber': user.phone_number,
+                        'lisenceNumber': user.license_number,
+                    },
+                    'isAdmin': user.is_admin 
+                }, status=200)
+
             else:
                 return JsonResponse({'error': 'Invalid password!'}, status=401)
 
@@ -92,6 +120,35 @@ class UserLoginView(View):
 
         except KeyError:
             return JsonResponse({'error': 'Missing email or password in the request!'}, status=400)
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserLogoutView(View):
+    def post(self, request):
+        try:
+            body = json.loads(request.body)
+            user_id = body.get('id') 
+
+            if not user_id:
+                return JsonResponse({"error": "User ID is required."}, status=400)
+
+            leaving_user = parkingAuth.objects.filter(id=user_id).first()
+
+            if not leaving_user:
+                return JsonResponse({"error": "User not found."}, status=404)
+
+            leaving_user.is_active = False
+            leaving_user.save()
+
+            return JsonResponse({'success': 'User logged out successfully!'}, status=200)
+
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON format.'}, status=400)
 
         except Exception as e:
             print(f"Unexpected error: {e}")
