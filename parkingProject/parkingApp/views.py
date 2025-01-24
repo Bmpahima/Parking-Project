@@ -6,6 +6,30 @@ from .models import ParkingLot
 from django.views import View
 from django.http import JsonResponse
 
+class AllParkingLot (View):
+    def get(self, request):
+        try:
+            all_parking_lots = ParkingLot.objects.all() # all parking lots
+
+            parking_lot_result = []
+            
+            for pl in all_parking_lots:
+
+                free_spots = pl.parking_spots - pl.parkings.filter(occupied=True).count()
+                current_pl = {
+                    "name": pl.name,
+                    "latitude": pl.lat,
+                    "longitude": pl.long,
+                    "parking_spots": pl.parking_spots,
+                    "freeSpots": int(free_spots)
+                }
+                parking_lot_result.append(current_pl)
+
+            return JsonResponse(parking_lot_result, status=200)
+
+        except Exception as e:
+            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "No Parking Lots Available."}, status=500)
+
 class ParkingLotProvider (View):
     def get(self, request, id):
         try:
