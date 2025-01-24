@@ -24,7 +24,7 @@ class Parking(models.Model):
     is_saved = models.BooleanField(default=False)
     reserved_until = models.DateTimeField(null=True, blank=True)
     driver = models.OneToOneField(parkingAuth,related_name='parking',null = True,on_delete=models.SET_NULL)
-
+    
     def __str__(self):
         return f"{self.id}"
 
