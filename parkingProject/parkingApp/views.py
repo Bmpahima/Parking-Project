@@ -1,68 +1,40 @@
-from django.shortcuts import render
 from django.views import View
 from django.http import JsonResponse
-from django.forms import ModelForm
 from django.views import View
 from django.http import JsonResponse
-from django.contrib.auth.hashers import check_password
-from rest_framework.authtoken.models import Token
-from .models import Parking, ParkingLot
+from .models import ParkingLot
 from django.views import View
 from django.http import JsonResponse
-#from django.contrib.auth import authenticate, login
-#from .forms import UserRegistrationForm, UserLoginForm
-import json
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from parkingApp.util.license_api import get_car_detail
-from .models import parkingAuth
-import bcrypt
 
-
-# פונקציה להצפנת סיסמה
-def hash_password(plain_password):
-    salt = bcrypt.gensalt()
-    hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), salt)
-    return hashed_password
-
-
-#פונקציית הרשמה
-@method_decorator(csrf_exempt, name='dispatch')
-class UserRegistrationView(View):
-    def post(self, request):
+class AllParkingLot (View):
+    def get(self, request):
         try:
-            form_data = json.loads(request.body)
-            print(form_data)
-            lisence_plate_number = form_data['lisence_plate_number']
-            car_details = get_car_detail(lisence_plate_number)
-            
-            if car_details :
-                year = car_details.get('year')
-                car_type = car_details.get('type')
-                color = car_details.get('color')
-                model = car_details.get('model')
-                print(year , model ,car_type ,color)
-                new_user = parkingAuth.objects.create(
-                    first_name = form_data['first_name'],
-                    last_name = form_data['last_name'],
-                    email = form_data['email'],
-                    phone_number = form_data['phone_number'],
-                    password = hash_password(form_data['password']),
-                    license_number = form_data['lisence_plate_number'],
-                    car_type = car_type,
-                    car_year = year,
-                    car_color = color,
-                    car_model = model
-            )
-    
-            return JsonResponse({'message': 'User data processed successfully!'}, status=200)
+            all_parking_lots = ParkingLot.objects.all() # all parking lots
 
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON format!'}, status=400)
+            parking_lot_result = []
+            
+            for pl in all_parking_lots:
+
+                free_spots = pl.parking_spots - pl.parkings.filter(occupied=True).count()
+                current_pl = {
+                    "name": pl.name,
+                    "latitude": pl.lat,
+                    "longitude": pl.long,
+                    "parking_spots": pl.parking_spots,
+                    "freeSpots": int(free_spots),
+                    "id":pl.id
+                }
+                parking_lot_result.append(current_pl)
+
+            return JsonResponse(parking_lot_result, status=200, safe=False)
 
         except Exception as e:
-            print(f"Unexpected error: {e}")
-            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
+            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "No Parking Lots Available."}, status=500)
+
+
+
+
+
 
 class ParkingLotProvider (View):
     def get(self, request, id):
@@ -77,12 +49,16 @@ class ParkingLotProvider (View):
             #parking spots - כמות מקומות החנייה
             #coords - קאורדינטות
             parking_lot_dict = {
-                "parkingName": selected_parking_lot.name,
-                "parkingSpots": selected_parking_lot.parking_spots,
-                "coords": [selected_parking_lot.lat, selected_parking_lot.long]
+                "id": selected_parking_lot.id,
+                "name": selected_parking_lot.name,
+                "parking_spots": selected_parking_lot.parking_spots,
+                "latitude"  : selected_parking_lot.lat,
+                "longitude" :  selected_parking_lot.long,
+                "freeSpots": int(free_spots),
             }
             #עיבוד רשימת מקומות החניה
             parkings_list = []
+
 
             for park in parkings: 
                 current_park = {
@@ -91,8 +67,8 @@ class ParkingLotProvider (View):
                     "license_number": park.license_number
                 }
                 parkings_list.append(current_park)
-
-            return JsonResponse({"parkinglot": parking_lot_dict, "parkings": parkings_list})
+            parking_lot_dict["parkings"] = parkings_list
+            return JsonResponse(parking_lot_dict, status=200, safe=False)
 
         except Exception as e:
             pass
