@@ -14,7 +14,8 @@ class parkingAuth(models.Model):
     car_color = models.CharField(max_length=50, null=True)
     car_model = models.CharField(max_length=100, null=True)
     created_at = models.DateTimeField(default=now)  # Automatically set the timestamp on creation
-
+    is_active = models.BooleanField(default=False)
+    is_admin = models.BooleanField(default=False)
     def __str__(self):
 
         return f"{self.first_name} {self.last_name}"
