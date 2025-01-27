@@ -7,6 +7,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.utils import timezone
 import json
+from django.db import transaction
+
 
 
 class AllParkingLot (View):
@@ -81,26 +83,28 @@ class SaveParking(View):
             savetime = data.get('savetime')
 
             print(data)
-            selected_parking_lot = Parking.objects.get(id=id)
-            user_parking = parkingAuth.objects.get(id=user_id)
-            
-
-            if selected_parking_lot.occupied or selected_parking_lot.is_saved:
-                return JsonResponse({'error':"This parking spot is not available!"}, status=400)
-            
-            if savetime == 'immediate':
-                selected_parking_lot.occupied = True
-
-            elif savetime == 'half':
-                selected_parking_lot.is_saved = True
-                selected_parking_lot.reserved_until = timezone.now() + timedelta(minutes=30)
+            with transaction.atomic():
+                selected_parking_lot = Parking.objects.select_for_update().get(id=id)
+                user_parking = parkingAuth.objects.get(id=user_id)
                 
-            elif savetime == 'hour':
-                selected_parking_lot.is_saved = True
-                selected_parking_lot.reserved_until = timezone.now() + timedelta(hours=1)
-            
-            selected_parking_lot.driver = user_parking
-            selected_parking_lot.save()
+                if selected_parking_lot.occupied or selected_parking_lot.is_saved:
+                    return JsonResponse({'error':"This parking spot is not available!"}, status=400)
+                
+                if savetime == 'immediate':
+                    selected_parking_lot.is_saved = True
+                    selected_parking_lot.reserved_until = timezone.now() + timedelta(minutes=5)
+
+
+                elif savetime == 'half':
+                    selected_parking_lot.is_saved = True
+                    selected_parking_lot.reserved_until = timezone.now() + timedelta(minutes=30)
+                    
+                elif savetime == 'hour':
+                    selected_parking_lot.is_saved = True
+                    selected_parking_lot.reserved_until = timezone.now() + timedelta(hours=1)
+                
+                selected_parking_lot.driver = user_parking
+                selected_parking_lot.save()
 
             return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
@@ -131,7 +135,11 @@ class ReleaseParking(View):
 
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
+        
+        ############################################################################################################################
+                                                                #TO DO
 
+        ############################################################################################################################
             
 
 

@@ -1,6 +1,7 @@
 import os
 import django
-
+from datetime import datetime, timedelta
+import Levenshtein
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'parkingProject.settings')
 
 django.setup()
@@ -8,9 +9,12 @@ django.setup()
 import cv2
 import pickle
 import numpy as np
+import requests
 from parkingApp.YoloModels.YoloModelManager import ModelManager
 from parkingApp.util.image_processing import crop_image_by_points, set_text_position
 from parkingApp.models import Parking, ParkingLot
+from django.utils import timezone
+
 
 
 model = ModelManager()
@@ -21,7 +25,7 @@ cap = cv2.VideoCapture('./parkingApp/images/meir1.mp4')
 parking_lot_name = 'raz'
 
 fps = cap.get(cv2.CAP_PROP_FPS)
-frame = int(fps * 3)
+frame = int(fps * 5)
 frame_count = 0
 
 # [Parking, Parking, Parking, Parking, Parking, Parking]
@@ -76,6 +80,9 @@ def generate_frames():
         
         if frame_count % frame == 0:    
             img, free_spaces, occupied_spaces = liveParkingDetection(img)
+            saved_parking = Parking.objects.filter(is_saved=True).all()
+            for sp in saved_parking:
+                check_parking_status(sp, crop_image_by_points(img, parking.coords))
             frame_count = 0
 
         for parking in parkingList:
@@ -104,6 +111,52 @@ def generate_frames():
 
     cap.release()
     cv2.destroyAllWindows()
+
+def check_parking_status(parking, park_img):
+    if not parking.occupied:
+        if parking.reserved_until < timezone.now():
+            parking.is_saved = False
+            parking.driver = None
+            parking.save()
+            return {"status": "expired", "message": "The parking reservation has expired."}
+    else:
+        actual_plate = parking.driver.license_number
+        predicted_plate = model.license_plate_prediction(park_img)
+        if predicted_plate is not None:
+            predicted_number = model.license_number_prediction(crop_image_by_points(park_img, predicted_plate[1]))
+            if predicted_number is not None:
+                predicted_plate_number = predicted_number[1]
+
+                similarity = 1 - Levenshtein.distance(actual_plate, predicted_plate_number) / max(len(actual_plate), len(predicted_plate_number))
+                if similarity >= 0.7:
+                    parking.is_saved = False
+                    parking.save()
+                else:
+                    ######################################################################
+                    #parking.is_saved = False
+                    #TO DO
+                    ######################################################################
+                    send_verification_to_server(parking.driver.id, predicted_plate_number)
+
+
+    return {"status": "active", "message": "The parking spot is still reserved."}
+
+
+def send_verification_to_server(userId, license):
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.post('http://localhost:8000', json={
+        "userId": userId,
+        "license": license
+    },
+    headers=headers)
+    if response.status_code == 200:
+        print("Request sent successfully!")
+    else:
+        print(f"Error: {response.status_code}")
+
 
 if __name__ == "__main__":
     generate_frames()

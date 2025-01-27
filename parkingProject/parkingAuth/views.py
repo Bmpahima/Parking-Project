@@ -8,6 +8,7 @@ from django.utils.decorators import method_decorator
 from parkingApp.util.license_api import get_car_detail
 from .models import parkingAuth
 import bcrypt
+from django.contrib.sessions.models import Session 
 
 # פונקציה להצפנת סיסמה
 def hash_password(plain_password):
@@ -99,6 +100,7 @@ class UserLoginView(View):
             if bcrypt.checkpw(password_form_data.encode('utf-8'), user.password.encode('utf-8')):
                 user.is_active = True
                 user.save()
+                #request.session['user_id'] = user.id
                 return JsonResponse({
                     'success': 'User logged in successfully!',
                     'user': {
@@ -131,6 +133,7 @@ class UserLoginView(View):
 class UserLogoutView(View):
     def post(self, request):
         try:
+            #user_id = request.session.get('user_id')
             body = json.loads(request.body)
             user_id = body.get('id') 
 
@@ -141,7 +144,7 @@ class UserLogoutView(View):
 
             if not leaving_user:
                 return JsonResponse({"error": "User not found."}, status=404)
-
+            #request.session.flush()
             leaving_user.is_active = False
             leaving_user.save()
 
