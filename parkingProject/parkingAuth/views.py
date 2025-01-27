@@ -87,9 +87,6 @@ class UserLoginView(View):
             form_data = json.loads(request.body)
             email_form_data = form_data['email'].lower()
             password_form_data = form_data['password']
-
-            print(email_form_data, password_form_data)
-
             # בדיקה אם המשתמש קיים
             try:
                 user = parkingAuth.objects.get(email=email_form_data)

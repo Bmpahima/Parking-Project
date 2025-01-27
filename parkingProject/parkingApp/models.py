@@ -13,20 +13,23 @@ class ParkingLot(models.Model):
     lat = models.DecimalField(max_digits=9, decimal_places=6,null=True)
 
     def __str__(self):
-        return f"{self.id} - {self.name}"
+        return f"{self.id} Parking -{self.name}"
 
 
 class Parking(models.Model):
     occupied = models.BooleanField(default=False) 
-    coords = models.JSONField(models.IntegerField())
+    #בתוך coords היה רשום -
+    #models.IntegerField()
+    #ביטלתי את זה
+    coords = models.JSONField()
     parking_lot = models.ForeignKey(ParkingLot,on_delete=models.CASCADE,related_name="parkings")
-    license_number = models.CharField(max_length=8, null=True)
+    #license_number = models.CharField(max_length=8, null=True)
     is_saved = models.BooleanField(default=False)
     reserved_until = models.DateTimeField(null=True, blank=True)
-    driver = models.OneToOneField(parkingAuth, related_name='parking', null=True, on_delete=models.SET_NULL)
+    driver = models.OneToOneField(parkingAuth, related_name='parking', null=True, on_delete=models.SET_NULL, blank=True)
 
     def __str__(self):
-        return f"{self.id}"
+        return f"{self.pk}"
 
 
 

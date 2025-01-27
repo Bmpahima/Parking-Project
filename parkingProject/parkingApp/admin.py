@@ -7,11 +7,12 @@ from .models import ParkingLot,Parking
 class ParkingLotAdmin(admin.ModelAdmin):
     search_fields = ('name', 'id')  # חיפוש לפי שם חניון או מזהה
     list_display = ('id', 'name', 'parking_spots', 'payment')  # שדות שיוצגו בטבלה הראשית
-    list_filter = ('payment',)  # סינון לפי האם יש תשלום
-    ordering = ('name',)  # מיון לפי שם החניון
+    ordering = ('id',)  # מיון לפי שם החניון
+    list_per_page = 10
+
 
 class ParkingAdmin(admin.ModelAdmin):
-    list_display = ('parking_lot', 'occupied')
+    list_display = ('id','parking_lot', 'occupied')
     search_fields = ('driver','id','license_number')
 
 # admin.register(User,UserAdmin)

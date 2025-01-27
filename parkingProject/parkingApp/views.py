@@ -62,7 +62,7 @@ class ParkingLotProvider(View):
                 current_park = {
                     "id": park.id,
                     "occupied": park.occupied,
-                    "license_number": park.license_number
+                    "saved": park.is_saved
                 }
                 parkings_list.append(current_park)
             parking_lot_dict["parkings"] = parkings_list
@@ -81,64 +81,69 @@ class SaveParking(View):
             id = data.get('id')
             user_id = data.get('user_id')
             savetime = data.get('savetime')
-
             print(data)
             with transaction.atomic():
-                selected_parking_lot = Parking.objects.select_for_update().get(id=id)
+                selected_parking = Parking.objects.select_for_update().get(id=id)
                 user_parking = parkingAuth.objects.get(id=user_id)
-                
-                if selected_parking_lot.occupied or selected_parking_lot.is_saved:
+                print("1")
+                if selected_parking.occupied or selected_parking.is_saved:
+                    print("2")
                     return JsonResponse({'error':"This parking spot is not available!"}, status=400)
-                
+
                 if savetime == 'immediate':
-                    selected_parking_lot.is_saved = True
-                    selected_parking_lot.reserved_until = timezone.now() + timedelta(minutes=5)
+                    selected_parking.is_saved = True
+                    selected_parking.reserved_until = timezone.now() + timedelta(minutes=5)
 
                 elif savetime == 'half':
-                    selected_parking_lot.is_saved = True
-                    selected_parking_lot.reserved_until = timezone.now() + timedelta(minutes=30)
+                    print("ben")
+                    selected_parking.is_saved = True
+                    selected_parking.reserved_until = timezone.now() + timedelta(minutes=30)
+                    print("3")
                     
                 elif savetime == 'hour':
-                    selected_parking_lot.is_saved = True
-                    selected_parking_lot.reserved_until = timezone.now() + timedelta(hours=1)
-                
-                selected_parking_lot.driver = user_parking
-                selected_parking_lot.save()
+                    selected_parking.is_saved = True
+                    selected_parking.reserved_until = timezone.now() + timedelta(hours=1)
 
+                selected_parking.driver = user_parking
+                
+                selected_parking.save()
+                print('dd')
             return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
             
-
 @method_decorator(csrf_exempt, name='dispatch')
 class ReleaseParking(View):
-
     def post(self, request):
         try:
             data = json.loads(request.body)
-            id = data.get('id')
+            parkingId = data.get('id')
             user_id = data.get('user_id')
-            print(data)
-            selected_parking_lot = Parking.objects.get(id=id) #חניה
+
+            selected_parking = Parking.objects.get(id=parkingId) #חניה
             user_parking = parkingAuth.objects.get(id=user_id) #משתמש
 
-            if not selected_parking_lot.occupied and selected_parking_lot.is_saved:
-                if selected_parking_lot.driver != user_parking:
-                    return JsonResponse(
-                {"error": "you cannot canel this!"},status=400)
-            selected_parking_lot.is_saved = False
-            selected_parking_lot.driver = None
-            selected_parking_lot.save()
+            if not selected_parking.occupied and selected_parking.is_saved:
+                if selected_parking.driver != user_parking:
+                    return JsonResponse({"error": "you cannot cancel this!"},status=400)
+                
+                selected_parking.is_saved = False
+                selected_parking.driver = None
+                selected_parking.reserved_until = None
+                selected_parking.save()
+                return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
 
-            if not (selected_parking_lot.occupied or selected_parking_lot.is_saved):
+            elif not (selected_parking.occupied or selected_parking.is_saved):
                 return JsonResponse({'error':"This parking spot is not available!"}, status=400)
         
-            selected_parking_lot.occupied = False
-            selected_parking_lot.driver = None
-            selected_parking_lot.save()
-            return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
+            else:
+                selected_parking.occupied = False
+                selected_parking.driver = None
+                selected_parking.reserved_until = None
+                selected_parking.save()
+                return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)

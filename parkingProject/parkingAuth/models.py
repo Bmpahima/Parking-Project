@@ -16,6 +16,8 @@ class parkingAuth(models.Model):
     created_at = models.DateTimeField(default=now)  # Automatically set the timestamp on creation
     is_active = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
+    class Meta:
+        verbose_name = 'User Name'
     def __str__(self):
 
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name} {self.last_name} - {self.license_number}"
