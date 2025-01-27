@@ -121,9 +121,10 @@ class ReleaseParking(View):
             parkingId = data.get('id')
             user_id = data.get('user_id')
 
+            print(data)
+
             selected_parking = Parking.objects.get(id=parkingId) #חניה
             user_parking = parkingAuth.objects.get(id=user_id) #משתמש
-
             if not selected_parking.occupied and selected_parking.is_saved:
                 if selected_parking.driver != user_parking:
                     return JsonResponse({"error": "you cannot cancel this!"},status=400)
