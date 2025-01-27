@@ -107,48 +107,37 @@ class SaveParking(View):
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
             
+@method_decorator(csrf_exempt, name='dispatch')
+class ReleaseParking(View):
 
-# class UserRegistrationView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            id = data.get('id')
+            user_id = data.get('user_id')
 
-#     def post(self, request):
+            print(data)
+            selected_parking_lot = Parking.objects.get(id=id)
+            user_parking = parkingAuth.objects.get(id=user_id)
 
-
-#         form = UserRegistrationForm(request.POST)
-#         if form.is_valid():
-
-#             user = form.save(commit=False) #עדיין לא שומר את הסיסמה בגלל הקומיט
-#             user.set_password(form.cleaned_data['password']) #ככה אני מצפין את הסיסמה - עם סט פסוורד
-#             user.save() #עכשיו הוא שומר
-#             token, created = Token.objects.get_or_create(user=user) # בודק אם למשתמש יש טוקן קיים - כלומר 
-
-#             return JsonResponse({'token': token.key}, status=200)
+            if not (selected_parking_lot.occupied or selected_parking_lot.is_saved):
+                return JsonResponse({'error':"This parking spot is not available!"}, status=400)
         
-#         return JsonResponse({'errors': form.errors}, status=400)
+            selected_parking_lot.occupied = False
+            selected_parking_lot.driver = None
+            selected_parking_lot.save()
 
-# class UserLoginView(View):
+            return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
-#     def post(self, request):
-#         form = UserLoginForm(request.POST)
-#         if form.is_valid():
-#             username = form.cleaned_data['username']
-#             password = form.cleaned_data['password']
-
-#             try:
-#                 user = User.objects.get(username=username)
-#             except User.DoesNotExist:
-#                 return JsonResponse({
-#                 'error': 'Invalid Username.'
-#                 },
-#                  status=400)
-
-#             if check_password(password, user.password):
-#                 token, created = Token.objects.get_or_create(user=user)
-#                 return JsonResponse({'token': token.key}, status=200)
-#             else:
-#                 return JsonResponse({'error': 'Invalid email or password.'}, status=400)
-#         return JsonResponse({'errors': form.errors}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
 
             
 
 
-    
+# שמירת החנייה:
+# אני שומר את הזמן בדאטהבייס עבור חניות שנשמרות לא מיידית
+# נניח שיש לי תוכנית בבקאנד שכל סריקה של מכוניות אני בודק אם יש חנייה שהיא משוריינת ואין בה רכב.
+# אם הזמן נגמר, סלמאת.
+# אם הזמן לא נגמר המשך.
+# בפרונט עם ריצת הטיימר אם הגענו לזמן שבו המשתמש צריך לקום, נבדוק על ידי קריאה לדאטהסט אם החנייה תפוסה.
