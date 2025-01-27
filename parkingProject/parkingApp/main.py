@@ -41,18 +41,8 @@ def parking_prediction(img):
 
         detected_classes = vehicle_predictions[0] if vehicle_predictions else []
         parkingList[i].occupied = any(cls in vehicle for cls in detected_classes)
-
-        if parkingList[i].occupied:
-            plate_prediction = model.license_plate_prediction(image)
-            print(plate_prediction)
-
-            if plate_prediction:
-                license_plate_img = crop_image_by_points(image, plate_prediction[1])
-                number_prediction = model.license_number_prediction(license_plate_img)
-
-                parkingList[i].license_number = number_prediction[1] if number_prediction else None
                
-    Parking.objects.bulk_update(parkingList, ['occupied', 'license_number'])
+    Parking.objects.bulk_update(parkingList, ['occupied'])
 
 
 def liveParkingDetection(img):
@@ -118,8 +108,19 @@ def check_parking_status(parking, park_img):
             parking.is_saved = False
             parking.driver = None
             parking.save()
-            return {"status": "expired", "message": "The parking reservation has expired."}
+
+            request_data = {
+                'verified': False,
+                'message': "User didn't arrived to the parking in time!"
+            }
+            send_verification_to_server(request_data=request_data)
+            
     else:
+        request_data = {
+            'verified': False,
+            'message': 'User has not been verified!'
+        }
+
         actual_plate = parking.driver.license_number
         predicted_plate = model.license_plate_prediction(park_img)
         if predicted_plate is not None:
@@ -131,26 +132,23 @@ def check_parking_status(parking, park_img):
                 if similarity >= 0.7:
                     parking.is_saved = False
                     parking.save()
-                else:
+                    request_data['verified'] = True
+                    request_data['message'] = 'User has been verified!'
+                # else:
                     ######################################################################
                     #parking.is_saved = False
                     #TO DO
                     ######################################################################
-                    send_verification_to_server(parking.driver.id, predicted_plate_number)
+        
+        send_verification_to_server(request_data)
 
 
-    return {"status": "active", "message": "The parking spot is still reserved."}
-
-
-def send_verification_to_server(userId, license):
+def send_verification_to_server(request_data):
     headers = {
         'Content-Type': 'application/json'
     }
 
-    response = requests.post('http://localhost:8000', json={
-        "userId": userId,
-        "license": license
-    },
+    response = requests.post('http://localhost:8000/parkinglot/verificationError', json=request_data,
     headers=headers)
     if response.status_code == 200:
         print("Request sent successfully!")

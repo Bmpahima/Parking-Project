@@ -94,7 +94,6 @@ class SaveParking(View):
                     selected_parking_lot.is_saved = True
                     selected_parking_lot.reserved_until = timezone.now() + timedelta(minutes=5)
 
-
                 elif savetime == 'half':
                     selected_parking_lot.is_saved = True
                     selected_parking_lot.reserved_until = timezone.now() + timedelta(minutes=30)
@@ -111,6 +110,7 @@ class SaveParking(View):
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
             
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ReleaseParking(View):
 
@@ -119,10 +119,18 @@ class ReleaseParking(View):
             data = json.loads(request.body)
             id = data.get('id')
             user_id = data.get('user_id')
-
             print(data)
-            selected_parking_lot = Parking.objects.get(id=id)
-            user_parking = parkingAuth.objects.get(id=user_id)
+            selected_parking_lot = Parking.objects.get(id=id) #חניה
+            user_parking = parkingAuth.objects.get(id=user_id) #משתמש
+
+            if not selected_parking_lot.occupied and selected_parking_lot.is_saved:
+                if selected_parking_lot.driver != user_parking:
+                    return JsonResponse(
+                {"error": "you cannot canel this!"},status=400)
+            selected_parking_lot.is_saved = False
+            selected_parking_lot.driver = None
+            selected_parking_lot.save()
+
 
             if not (selected_parking_lot.occupied or selected_parking_lot.is_saved):
                 return JsonResponse({'error':"This parking spot is not available!"}, status=400)
@@ -130,7 +138,6 @@ class ReleaseParking(View):
             selected_parking_lot.occupied = False
             selected_parking_lot.driver = None
             selected_parking_lot.save()
-
             return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
         except Exception as e:
@@ -141,7 +148,6 @@ class ReleaseParking(View):
 
         ############################################################################################################################
             
-
 
 # שמירת החנייה:
 # אני שומר את הזמן בדאטהבייס עבור חניות שנשמרות לא מיידית
