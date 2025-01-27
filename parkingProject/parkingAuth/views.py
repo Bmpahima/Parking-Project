@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from parkingApp.util.license_api import get_car_detail
 from .models import parkingAuth
+from parkingApp.models import Parking
 import bcrypt
 from django.contrib.sessions.models import Session 
 
@@ -97,7 +98,7 @@ class UserLoginView(View):
             if bcrypt.checkpw(password_form_data.encode('utf-8'), user.password.encode('utf-8')):
                 user.is_active = True
                 user.save()
-                #request.session['user_id'] = user.id
+                request.session['user_id'] = user.id
                 return JsonResponse({
                     'success': 'User logged in successfully!',
                     'user': {
@@ -130,7 +131,7 @@ class UserLoginView(View):
 class UserLogoutView(View):
     def post(self, request):
         try:
-            #user_id = request.session.get('user_id')
+            user_id = request.session.get('user_id')
             body = json.loads(request.body)
             user_id = body.get('id') 
 
@@ -141,7 +142,7 @@ class UserLogoutView(View):
 
             if not leaving_user:
                 return JsonResponse({"error": "User not found."}, status=404)
-            #request.session.flush()
+            request.session.flush()
             leaving_user.is_active = False
             leaving_user.save()
 
@@ -153,3 +154,35 @@ class UserLogoutView(View):
         except Exception as e:
             print(f"Unexpected error: {e}")
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
+        
+
+
+def is_admin(user):
+    return user.is_admin
+
+# class UserAdmin(View):
+#     def get(self, request, id):
+#         admin_users = parkingAuth.objects.filter(id=id)
+#         admin_parking_data = []
+
+
+            
+#         for parking_lot in set([parking.parking_lot for parking in parkings]):
+#             total_spots = parking_lot.parking_spots
+#             occupied_spots = parkings.filter(parking_lot=parking_lot, occupied=True).count()
+#             available_spots = total_spots - occupied_spots
+
+#             parking_lots_data.append({
+#                 "parking_lot_name": parking_lot.name,
+#                 "total_spots": total_spots,
+#                 "occupied_spots": occupied_spots,
+#                 "available_spots": available_spots
+#             })
+        
+#         admin_parking_data.append({
+#             "license_number": admin.license_number,
+#             "parking_lots": parking_lots_data
+#         })
+    
+#     return JsonResponse({"admin_parking_data": admin_parking_data}, safe=False)
+
