@@ -9,11 +9,14 @@ class ParkingLotAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'parking_spots', 'payment')  # שדות שיוצגו בטבלה הראשית
     ordering = ('id',)  # מיון לפי שם החניון
     list_per_page = 10
+    filter_horizontal = ("owner",) 
 
 
 class ParkingAdmin(admin.ModelAdmin):
     list_display = ('id','parking_lot', 'occupied')
     search_fields = ('driver','id','license_number')
+
+
 
 # admin.register(User,UserAdmin)
 admin.site.register(ParkingLot, ParkingLotAdmin)

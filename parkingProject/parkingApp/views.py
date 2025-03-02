@@ -113,6 +113,7 @@ class SaveParking(View):
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
             
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ReleaseParking(View):
     def post(self, request):
@@ -148,6 +149,82 @@ class ReleaseParking(View):
 
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
+        
+
+class getOwnerParkingLot(View):
+    def get(self, request, id):
+        try:
+            user = parkingAuth.objects.filter(id=id).first()
+            
+            if not user:
+                return JsonResponse({"error": "User not found"}, status=404)
+
+            owner_parking_lots = user.lots.all()
+            print(owner_parking_lots)
+            parking_lots_list = []
+            for parking_lot in owner_parking_lots:
+                free_spots = parking_lot.parking_spots - parking_lot.parkings.filter(occupied=True).count()
+                
+                parkings_list = [
+                    {
+                        "id": park.id,
+                        "occupied": park.occupied,
+                        "license_number": park.driver.license_number if park.occupied and park.driver else None
+                    }
+                    for park in parking_lot.parkings.all()
+                ]
+                
+                parking_lots_list.append({
+                    "id": parking_lot.id,
+                    "name": parking_lot.name,
+                    "latitude": float(parking_lot.lat) if parking_lot.lat else None,
+                    "longitude": float(parking_lot.long) if parking_lot.long else None,
+                    "parking_spots": parking_lot.parking_spots,
+                    "freeSpots": int(free_spots),
+                    "parkings": parkings_list
+                })
+
+            return JsonResponse(parking_lots_list, status=200, safe=False)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+        
+
+class getParkingLotUsers(View):
+    def get(self, request, parkingLotId):
+        try:
+            parking_lot = ParkingLot.objects.filter(id=parkingLotId).first()
+            if not parking_lot:
+                return JsonResponse({"error": "Parking lot not found"}, status=404)
+
+            parkings = parking_lot.parkings.all()
+
+            parkings_list = [
+                {
+                    "id": park.id,
+                    "occupied": park.occupied,
+                    "saved": park.is_saved,
+                    "user": {
+                        "id": park.driver.id,
+                        "first_name": park.driver.first_name,
+                        "last_name": park.driver.last_name,
+                        "email": park.driver.email,
+                        "phone_number": park.driver.phone_number,
+                        "license_number": park.driver.license_number,
+                        "car_type": park.driver.car_type,
+                        "car_model": park.driver.car_model,
+                        "car_color": park.driver.car_color[::-1],
+                        "car_year": park.driver.car_year,
+                    } if (park.occupied or park.is_saved) and park.driver else None
+                }
+                for park in parkings
+            ]
+
+            return JsonResponse({"parkings": parkings_list}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
         
         ############################################################################################################################
                                                                 #TO DO

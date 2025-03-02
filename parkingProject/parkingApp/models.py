@@ -11,6 +11,8 @@ class ParkingLot(models.Model):
     frame_image = models.CharField(max_length=250)
     long = models.DecimalField(max_digits=9, decimal_places=6,null=True)
     lat = models.DecimalField(max_digits=9, decimal_places=6,null=True)
+    owner = models.ManyToManyField(parkingAuth, related_name="lots", blank=True)
+
 
     def __str__(self):
         return f"{self.id} Parking -{self.name}"
