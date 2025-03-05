@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils.timezone import now
-# from parkingApp.models import ParkingLot
+from parkingApp.models import ParkingLot
 
 class parkingAuth(models.Model):
     first_name = models.CharField(max_length=100)
@@ -16,9 +16,16 @@ class parkingAuth(models.Model):
     created_at = models.DateTimeField(default=now)  # Automatically set the timestamp on creation
     is_active = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
-
     class Meta:
         verbose_name = 'User Name'
     def __str__(self):
 
         return f"{self.first_name} {self.last_name} - {self.license_number}"
+
+class ParkingHistory(models.Model):
+    parking_lot = models.ForeignKey(ParkingLot,on_delete = models.CASCADE,related_name = "history")
+    driver = models.ForeignKey(parkingAuth,on_delete = models.CASCADE,related_name = "history")
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    
+    

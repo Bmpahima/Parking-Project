@@ -6,7 +6,7 @@ import json
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from parkingApp.util.license_api import get_car_detail
-from .models import parkingAuth
+from .models import parkingAuth,ParkingHistory
 from parkingApp.models import Parking
 import bcrypt
 from django.contrib.sessions.models import Session 
@@ -159,6 +159,33 @@ class UserLogoutView(View):
 
 def is_admin(user):
     return user.is_admin
+
+class GetHistory(View):
+    def get(self,request,userId):
+        try:
+            driver = parkingAuth.objects.filter(id=userId)
+            list_history = []
+            driver_history = driver.history.all()
+            for history in driver_history:
+                start_time_string = history.start_time.strftime("%H:%M")
+                end_time_string = history.end_time.strftime("%H:%M")
+                start_date_string = history.start_time.strftime("%Y-%m-%d")
+                end_date_string = history.end_time.strftime("%Y-%m-%d")
+                list_history.append({
+                    "parking_lot":history.parking_lot.name,
+                    "start_time":start_time_string,
+                    "end_time":end_time_string,
+                    "start_date":start_date_string,
+                    "end_date":end_date_string
+                })
+        except
+
+
+
+
+
+
+
 
 # class UserAdmin(View):
 #     def get(self, request, id):
