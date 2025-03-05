@@ -8,7 +8,7 @@ class ParkingLotAdmin(admin.ModelAdmin):
     search_fields = ('name', 'id')  # חיפוש לפי שם חניון או מזהה
     list_display = ('id', 'name', 'parking_spots', 'payment')  # שדות שיוצגו בטבלה הראשית
     ordering = ('id',)  # מיון לפי שם החניון
-    list_per_page = 10
+    list_per_page = 17
     filter_horizontal = ("owner",) 
 
 

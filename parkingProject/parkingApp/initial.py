@@ -91,6 +91,10 @@ def initial_parking_mark():
 
     cv2.destroyAllWindows()
 
+
+
+import requests
+
 def getAddress(latitude, longitude):
     
     try:
@@ -98,26 +102,37 @@ def getAddress(latitude, longitude):
         longitude = float(longitude)
     except ValueError:
         return {"error": "Invalid coordinates"}
-
-    url = "https://nominatim.openstreetmap.org/reverse"
-    params = {
-        "lat": latitude,
-        "lon": longitude,
-        "format": "json",
-        "accept-language": "en"  # תוצאה בעברית
-    }
-
-    response = requests.get(url, params=params)
-
-    if response.status_code == 200:
-        data = response.json()
-        return {
-            "address": data.get("display_name", "Address not found"),
-            "latitude": latitude,
-            "longitude": longitude
+    try:
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {
+            "lat": latitude,
+            "lon": longitude,
+            "format": "json",
+            "accept-language": "he"  # תוצאה בעברית
         }
-    else:
+
+        headers = {"User-Agent": "MyParkingApp/1.0 (contact@example.com)"}  
+        response = requests.get(url, params=params, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            if "city" in data['address']:
+                return {
+                    "city": data['address']['city'],
+                    "road": data['address']['road'],
+                }
+            elif "town" in data['address']:
+                return {
+                    "city": data['address']['town'],
+                    "road": data['address']['road'],
+                }
+            else:
+                return {"error": "Address not found"}
+        else:
+            return {"error": "Address not found"}
+    except:
         return {"error": "Address not found"}
+
+
 
 def save_to_db(name, payment, long, lat):
     response = getAddress(latitude=lat,longitude=long)
@@ -125,7 +140,7 @@ def save_to_db(name, payment, long, lat):
     if 'error' in response:
         address = response['error']
     else:
-        address = response['address']
+        address = response['city']+ ", " +response['road']
 
     parking_lot = ParkingLot(
         parking_spots=len(positionList),
