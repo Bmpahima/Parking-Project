@@ -12,7 +12,7 @@ class ParkingLot(models.Model):
     long = models.DecimalField(max_digits=9, decimal_places=6,null=True)
     lat = models.DecimalField(max_digits=9, decimal_places=6,null=True)
     owner = models.ManyToManyField(parkingAuth, related_name="lots", blank=True)
-
+    address = models.TextField(max_length=200,default="Address not found")
 
     def __str__(self):
         return f"{self.id} Parking -{self.name}"

@@ -1,3 +1,5 @@
+#python -m parkingApp.initial
+
 import os
 import django
 
@@ -5,7 +7,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'parkingProject.settings')
 
 django.setup()
 
-
+import requests
 import cv2
 import pickle
 import os
@@ -89,14 +91,50 @@ def initial_parking_mark():
 
     cv2.destroyAllWindows()
 
-def save_to_db(name, payment, long, lat): 
+def getAddress(latitude, longitude):
+    
+    try:
+        latitude = float(latitude)
+        longitude = float(longitude)
+    except ValueError:
+        return {"error": "Invalid coordinates"}
+
+    url = "https://nominatim.openstreetmap.org/reverse"
+    params = {
+        "lat": latitude,
+        "lon": longitude,
+        "format": "json",
+        "accept-language": "en"  # תוצאה בעברית
+    }
+
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        return {
+            "address": data.get("display_name", "Address not found"),
+            "latitude": latitude,
+            "longitude": longitude
+        }
+    else:
+        return {"error": "Address not found"}
+
+def save_to_db(name, payment, long, lat):
+    response = getAddress(latitude=lat,longitude=long)
+    address = ""
+    if 'error' in response:
+        address = response['error']
+    else:
+        address = response['address']
+
     parking_lot = ParkingLot(
         parking_spots=len(positionList),
         name=name,
         payment=payment,
         frame_image=original_img_path,
         long=long,
-        lat=lat
+        lat=lat,
+        address=address,
     )
 
     parking_lot.save()

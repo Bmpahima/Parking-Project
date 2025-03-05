@@ -1,6 +1,5 @@
 from django.db import models
 from django.utils.timezone import now
-from parkingApp.models import ParkingLot
 
 class parkingAuth(models.Model):
     first_name = models.CharField(max_length=100)
@@ -23,9 +22,8 @@ class parkingAuth(models.Model):
         return f"{self.first_name} {self.last_name} - {self.license_number}"
 
 class ParkingHistory(models.Model):
-    parking_lot = models.ForeignKey(ParkingLot,on_delete = models.CASCADE,related_name = "history")
-    driver = models.ForeignKey(parkingAuth,on_delete = models.CASCADE,related_name = "history")
+    parking_lot = models.ForeignKey('parkingApp.ParkingLot', on_delete=models.CASCADE, related_name="history")
+    driver = models.ForeignKey('parkingAuth.parkingAuth', on_delete=models.CASCADE, related_name="history")
     start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-    
+    end_time = models.DateTimeField(default=now)
     

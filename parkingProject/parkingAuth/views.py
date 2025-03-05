@@ -7,7 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from parkingApp.util.license_api import get_car_detail
 from .models import parkingAuth,ParkingHistory
-from parkingApp.models import Parking
+#from parkingApp.models import Parking
 import bcrypt
 from django.contrib.sessions.models import Session 
 
@@ -176,9 +176,41 @@ class GetHistory(View):
                     "start_time":start_time_string,
                     "end_time":end_time_string,
                     "start_date":start_date_string,
-                    "end_date":end_date_string
+                    "end_date":end_date_string,
                 })
-        except
+            return JsonResponse(list_history, status=200,safe=False)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON format.'}, status=400)
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
+        
+class AllParksHistory(View):
+    def get(self,request,parkingLotId):
+        try:
+            park_history = ParkingHistory.objects.filter(parking_lot__id=parkingLotId).all()
+            list_history = []
+            for history in park_history:
+                start_time_string = history.start_time.strftime("%H:%M")
+                end_time_string = history.end_time.strftime("%H:%M")
+                start_date_string = history.start_time.strftime("%Y-%m-%d")
+                end_date_string = history.end_time.strftime("%Y-%m-%d")
+                list_history.append({
+                    "parking_lot":history.parking_lot.name,
+                    "start_time":start_time_string,
+                    "end_time":end_time_string,
+                    "start_date":start_date_string,
+                    "end_date":end_date_string,
+                    "license_number":history.driver.license_number,
+                })
+            return JsonResponse(list_history, status=200,safe=False)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON format.'}, status=400)
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
 
 
 
