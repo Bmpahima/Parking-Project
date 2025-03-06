@@ -27,6 +27,7 @@ class AllParkingLot (View):
                     "longitude": pl.long,
                     "parking_spots": pl.parking_spots,
                     "freeSpots": int(free_spots),
+                    "address": pl.address,
                     "id":pl.id
                 }
                 parking_lot_result.append(current_pl)
