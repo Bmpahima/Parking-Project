@@ -10,6 +10,16 @@ from .models import parkingAuth,ParkingHistory
 #from parkingApp.models import Parking
 import bcrypt
 from django.contrib.sessions.models import Session 
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
+from django.conf import settings
+from django.core.mail import send_mail
+from django.contrib.auth.hashers import make_password
+
+
+
+
 
 # פונקציה להצפנת סיסמה
 def hash_password(plain_password):
@@ -156,6 +166,8 @@ class UserLogoutView(View):
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
         
 
+  
+
 
 def is_admin(user):
     return user.is_admin
@@ -218,7 +230,63 @@ class AllParksHistory(View):
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
 
 
+@method_decorator(csrf_exempt, name='dispatch')       
+class ForgertPassword(View):
+    def post(self,request):
+        try:
+            data = json.loads(request.body)
+            email = data.get("email")
 
+            if not email:
+                return JsonResponse({"error": "Email is required."}, status=400)
+            
+            user = parkingAuth.objects.get(email=email)
+            uid = urlsafe_base64_encode(force_bytes(user.pk)) ###זה לוקח את הPK של המשתמש ומקודד אותו בבסיס 64 שיהיה בטוח לשליחה.
+            #בשביל שהמערכת תדע איזה משתמש רוצה לאפס את הסיסמה שלו מבלי לחשוף את הID שלו.ץ
+            token = default_token_generator.make_token(user) # יצירת טוקן למשתמש על מנת לאפס את הסיסמה 
+            reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}" #לינק ייחודי למשתמש שהוא דרכו יאפס את הסיסמה.
+            send_mail(
+                "Reset Your Password",
+                f"Click the link to reset your password: {reset_url}",
+                settings.DEFAULT_FROM_EMAIL,##פה אנחנו צריכים להגדיר מייל שלנו דפולטיבי שממנו יישלח בעצם המייל לכולם, זה בפרונט בן.
+                [email], 
+            ) #פונקציה של דאנגו לאיפוס סיסמה
+            return JsonResponse({"message": "Check your email for a reset link."})
+        except Exception as e:
+            return JsonResponse({"error": "User with this email does not exist."}, status=400)
+        
+
+@method_decorator(csrf_exempt, name='dispatch')       
+class ResetPassword(View):
+    def post(self,request):
+        try:
+            data = json.loads(request.body)
+            token = data.get("token")
+            uid = data.get("uid")
+            new_password = data.get("new_password") 
+            if not uid or not token or not new_password:
+                return JsonResponse({"error": "Missing required fields"}, status=400)
+            try:
+                user_id = force_str(urlsafe_base64_decode(uid))
+                user = parkingAuth.objects.get(pk=user_id)
+            except Exception as e:
+                return JsonResponse({"error": "Invalid user"}, status=400)
+
+            if not default_token_generator.check_token(user, token):
+                return JsonResponse({"error": "Invalid or expired token"}, status=400)
+
+            # עדכון הסיסמה החדשה (עם הצפנה)
+            user.password = make_password(new_password)
+            #user.password = new_password #בלי הצפנה.
+            user.save()
+            return JsonResponse({"message": "Password reset successful, you can enter now with your new password."})
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON format!"}, status=400)
+            
+
+        
+            
 
 
 
