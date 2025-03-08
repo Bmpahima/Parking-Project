@@ -8,6 +8,7 @@ from django.utils.decorators import method_decorator
 from django.utils import timezone
 import json
 from django.db import transaction
+from parkingAuth.models import ParkingHistory
 
 
 
@@ -86,9 +87,7 @@ class SaveParking(View):
             with transaction.atomic():
                 selected_parking = Parking.objects.select_for_update().get(id=id)
                 user_parking = parkingAuth.objects.get(id=user_id)
-                print("1")
                 if selected_parking.occupied or selected_parking.is_saved:
-                    print("2")
                     return JsonResponse({'error':"This parking spot is not available!"}, status=400)
 
                 if savetime == 'immediate':
@@ -96,10 +95,8 @@ class SaveParking(View):
                     selected_parking.reserved_until = timezone.now() + timedelta(minutes=5)
 
                 elif savetime == 'half':
-                    print("ben")
                     selected_parking.is_saved = True
                     selected_parking.reserved_until = timezone.now() + timedelta(minutes=30)
-                    print("3")
                     
                 elif savetime == 'hour':
                     selected_parking.is_saved = True
@@ -108,7 +105,10 @@ class SaveParking(View):
                 selected_parking.driver = user_parking
                 
                 selected_parking.save()
-                print('dd')
+
+                history = ParkingHistory(parking_lot=selected_parking.parking_lot, driver=user_parking, start_time=timezone.now())
+                history.save()
+
             return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
         except Exception as e:
@@ -135,6 +135,11 @@ class ReleaseParking(View):
                 selected_parking.driver = None
                 selected_parking.reserved_until = None
                 selected_parking.save()
+
+                history = ParkingHistory.objects.filter(driver=user_parking, parking_lot=selected_parking.parking_lot, end_time__isnull=True).first()
+                if history:
+                    history.end_time = timezone.now()
+                    history.save()
                 return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
 
@@ -146,6 +151,11 @@ class ReleaseParking(View):
                 selected_parking.driver = None
                 selected_parking.reserved_until = None
                 selected_parking.save()
+
+                history = ParkingHistory.objects.filter(driver=user_parking, parking_lot=selected_parking.parking_lot, end_time__isnull=True).first()
+                if history:
+                    history.end_time = timezone.now()
+                    history.save()
                 return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
         except Exception as e:

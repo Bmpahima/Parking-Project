@@ -163,7 +163,7 @@ def is_admin(user):
 class GetHistory(View):
     def get(self,request,userId):
         try:
-            driver = parkingAuth.objects.filter(id=userId)
+            driver = parkingAuth.objects.filter(id=userId).first()
             list_history = []
             driver_history = driver.history.all()
             for history in driver_history:
@@ -177,6 +177,9 @@ class GetHistory(View):
                     "end_time":end_time_string,
                     "start_date":start_date_string,
                     "end_date":end_date_string,
+                     "license_number":history.driver.license_number,
+                    "first_name": history.driver.first_name,
+                    "last_name": history.driver.last_name,
                 })
             return JsonResponse(list_history, status=200,safe=False)
         except json.JSONDecodeError:
@@ -203,6 +206,8 @@ class AllParksHistory(View):
                     "start_date":start_date_string,
                     "end_date":end_date_string,
                     "license_number":history.driver.license_number,
+                    "first_name": history.driver.first_name,
+                    "last_name": history.driver.last_name,
                 })
             return JsonResponse(list_history, status=200,safe=False)
         except json.JSONDecodeError:

@@ -24,6 +24,6 @@ class parkingAuth(models.Model):
 class ParkingHistory(models.Model):
     parking_lot = models.ForeignKey('parkingApp.ParkingLot', on_delete=models.CASCADE, related_name="history")
     driver = models.ForeignKey('parkingAuth.parkingAuth', on_delete=models.CASCADE, related_name="history")
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField(default=now)
+    start_time = models.DateTimeField(default=now)
+    end_time = models.DateTimeField(null=True)
     
