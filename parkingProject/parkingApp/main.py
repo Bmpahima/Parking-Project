@@ -21,8 +21,8 @@ model = ModelManager()
 
 vehicle = [0, 1]
 
-cap = cv2.VideoCapture('./parkingApp/images/meir1.mp4')
-parking_lot_name = 'raz'
+cap = cv2.VideoCapture('./parkingApp/images/IMG_6572.mov')
+parking_lot_name = 'tester'
 
 fps = cap.get(cv2.CAP_PROP_FPS)
 frame = int(fps * 5)
@@ -72,7 +72,7 @@ def generate_frames():
             img, free_spaces, occupied_spaces = liveParkingDetection(img)
             saved_parking = Parking.objects.filter(is_saved=True).all()
             for sp in saved_parking:
-                check_parking_status(sp, crop_image_by_points(img, parking.coords))
+                check_parking_status(sp, crop_image_by_points(img, sp.coords))#########check parking ---->sp
             frame_count = 0
 
         for parking in parkingList:

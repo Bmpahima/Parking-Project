@@ -136,7 +136,6 @@ class UserLoginView(View):
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
 
 
-
 @method_decorator(csrf_exempt, name='dispatch')
 class UserLogoutView(View):
     def post(self, request):
@@ -165,9 +164,6 @@ class UserLogoutView(View):
             print(f"Unexpected error: {e}")
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
         
-
-  
-
 
 def is_admin(user):
     return user.is_admin
@@ -235,12 +231,11 @@ class ForgertPassword(View):
         try:
             data = json.loads(request.body)
             email = data.get("email")
-            
             if not email:
                 return JsonResponse({"error": "Email is required."}, status=400)
             
             user = parkingAuth.objects.get(email=email)
-            code = random.randrange(100000,999999)
+            code = str(random.randrange(100000,999999))
             send_mail(
                 "Reset Your Password",
                 f"your code for reset your password is : {code}",
@@ -257,6 +252,7 @@ class ResetPassword(View):
         try:
             data = json.loads(request.body)
             email = data.get("email")
+            print(email)
             new_password = data.get("new_password")
             try:
                 user = parkingAuth.objects.get(email=email)
@@ -268,10 +264,6 @@ class ResetPassword(View):
             return JsonResponse({"message": "Password reset successful, you can enter now with your new password."})
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON format!"}, status=400)
-            
-
-        
-            
 
 
 
