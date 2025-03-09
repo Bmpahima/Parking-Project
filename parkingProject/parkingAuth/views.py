@@ -235,7 +235,7 @@ class ForgertPassword(View):
         try:
             data = json.loads(request.body)
             email = data.get("email")
-
+            
             if not email:
                 return JsonResponse({"error": "Email is required."}, status=400)
             
@@ -256,7 +256,7 @@ class ResetPassword(View):
     def post(self,request):
         try:
             data = json.loads(request.body)
-            email = data.get("email") 
+            email = data.get("email")
             new_password = data.get("new_password")
             try:
                 user = parkingAuth.objects.get(email=email)
