@@ -69,6 +69,7 @@ def generate_frames():
             break
         
         if frame_count % frame == 0:    
+            parkingList = ParkingLot.objects.filter(name=parking_lot_name)[0].parkings.all()
             img, free_spaces, occupied_spaces = liveParkingDetection(img)
             saved_parking = Parking.objects.filter(is_saved=True).all()
             for sp in saved_parking:
@@ -77,8 +78,7 @@ def generate_frames():
 
         for parking in parkingList:
             pts = np.array(parking.coords, np.int32).reshape((-1, 1, 2))
-            color = (0, 255, 0) if not parking.occupied else (0, 0, 255)
-
+            color = (0, 0, 255) if parking.occupied else ((255, 0, 0) if parking.is_saved else (0, 255, 0))
             cv2.polylines(img, [pts], isClosed=True, color=color, thickness=2)
             cv2.putText(img=img, 
                         text=f"ID: {parking.id}", 
@@ -89,7 +89,9 @@ def generate_frames():
                         thickness=2)
             
         cv2.putText(img, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        cv2.putText(img, f"Saved: {len(saved_parking)}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
 
         cv2.imshow('Parking Detection', img)
 
@@ -104,11 +106,10 @@ def generate_frames():
 
 def check_parking_status(parking, park_img):
     if not parking.occupied:
-        if parking.reserved_until < timezone.now():
+        if parking.is_saved and parking.reserved_until < timezone.now():
             parking.is_saved = False
             parking.driver = None
             parking.save()
-
             request_data = {
                 'verified': False,
                 'message': "User didn't arrived to the parking in time!"
@@ -116,6 +117,8 @@ def check_parking_status(parking, park_img):
             send_verification_to_server(request_data=request_data)
             
     else:
+        parking.is_saved = False
+        parking.save()
         request_data = {
             'verified': False,
             'message': 'User has not been verified!'
