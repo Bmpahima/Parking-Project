@@ -73,7 +73,11 @@ class UserRegistrationView(View):
                         'lname': new_user.last_name,
                         'email': new_user.email,
                         'phoneNumber': new_user.phone_number,
-                        'lisenceNumber': new_user.license_number
+                        'lisenceNumber': new_user.license_number,
+                        'car_year': new_user.car_year,
+                        'car_model': new_user.car_model,
+                        'car_color': new_user.car_color,
+                        'car_type': new_user.car_type
                     },
                     'isAdmin': new_user.is_admin 
                 }, status=200)
@@ -118,6 +122,10 @@ class UserLoginView(View):
                         'email': user.email,
                         'phoneNumber': user.phone_number,
                         'lisenceNumber': user.license_number,
+                        'car_year': user.car_year,
+                        'car_model': user.car_model,
+                        'car_color': user.car_color,
+                        'car_type': user.car_type
                     },
                     'isAdmin': user.is_admin 
                 }, status=200)
