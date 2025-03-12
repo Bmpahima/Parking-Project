@@ -50,8 +50,8 @@ class UserRegistrationView(View):
                 print(year , model ,car_type ,color)
 
                 new_user = parkingAuth.objects.create(
-                    first_name = form_data['first_name'],
-                    last_name = form_data['last_name'],
+                    first_name = form_data['first_name'].capitalize(),
+                    last_name = form_data['last_name'].capitalize(),
                     email = form_data['email'].lower(),
                     phone_number = form_data['phone_number'],
                     password = hash_password(form_data['password']),
@@ -117,8 +117,8 @@ class UserLoginView(View):
                     'success': 'User logged in successfully!',
                     'user': {
                         'id': user.id,
-                        'fname': user.first_name,
-                        'lname': user.last_name,
+                        'fname': user.first_name.capitalize(),
+                        'lname': user.last_name.capitalize(),
                         'email': user.email,
                         'phoneNumber': user.phone_number,
                         'lisenceNumber': user.license_number,
