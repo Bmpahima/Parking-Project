@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import UserRegistrationView, UserLoginView, UserLogoutView,AllParksHistory,GetHistory,ResetPassword,ForgertPassword
+from .views import UserRegistrationView, UserLoginView, UserLogoutView, AllParksHistory, GetHistory, ResetPassword, ForgertPassword, DeleteAccount
 
 
 urlpatterns = [
@@ -10,4 +10,5 @@ urlpatterns = [
     path('admin/history/<int:parkingLotId>/', AllParksHistory.as_view(), name='history'),
     path('reset-password/', ResetPassword.as_view(), name='reset-password'),
     path('forgot-password/', ForgertPassword.as_view(), name='forgot-password'),
+    path('delete-account/<int:userId>/', DeleteAccount.as_view(), name='delete-account'),
 ]

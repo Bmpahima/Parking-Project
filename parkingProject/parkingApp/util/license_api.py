@@ -14,9 +14,9 @@ def get_car_detail (license_number):
         api_results = response.json()
         records = api_results.get('result', []).get('records', [])
         if records:
-            vehicle_type = records[0]['tozeret_nm'][::-1]
+            vehicle_type = records[0]['tozeret_nm']
             production_year = records[0]['shnat_yitzur']
-            vehicle_color = records[0]['tzeva_rechev'][::-1]
+            vehicle_color = records[0]['tzeva_rechev']
             vehicle_name = records[0]['kinuy_mishari']
 
             return {"type": vehicle_type, "year": production_year, "color": vehicle_color, "model": vehicle_name}

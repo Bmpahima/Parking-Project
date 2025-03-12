@@ -56,9 +56,9 @@ class UserRegistrationView(View):
                     phone_number = form_data['phone_number'],
                     password = hash_password(form_data['password']),
                     license_number = form_data['lisence_plate_number'],
-                    car_type = car_type,
+                    car_type = car_type[::-1],
                     car_year = year,
-                    car_color = color,
+                    car_color = color[::-1],
                     car_model = model
                 )
 
@@ -274,32 +274,17 @@ class ResetPassword(View):
             return JsonResponse({"error": "Invalid JSON format!"}, status=400)
 
 
-
-
-
-# class UserAdmin(View):
-#     def get(self, request, id):
-#         admin_users = parkingAuth.objects.filter(id=id)
-#         admin_parking_data = []
-
-
-            
-#         for parking_lot in set([parking.parking_lot for parking in parkings]):
-#             total_spots = parking_lot.parking_spots
-#             occupied_spots = parkings.filter(parking_lot=parking_lot, occupied=True).count()
-#             available_spots = total_spots - occupied_spots
-
-#             parking_lots_data.append({
-#                 "parking_lot_name": parking_lot.name,
-#                 "total_spots": total_spots,
-#                 "occupied_spots": occupied_spots,
-#                 "available_spots": available_spots
-#             })
+@method_decorator(csrf_exempt, name='dispatch')
+class DeleteAccount(View):
+    def delete(self, request, userId):
+        try:
+            driver = parkingAuth.objects.get(id=userId)
+            driver.delete()
+            return JsonResponse({'success': "User's account deleted successfully!"}, status=200)
         
-#         admin_parking_data.append({
-#             "license_number": admin.license_number,
-#             "parking_lots": parking_lots_data
-#         })
-    
-#     return JsonResponse({"admin_parking_data": admin_parking_data}, safe=False)
+        except parkingAuth.DoesNotExist:
+            return JsonResponse({'error': 'User not found.'}, status=404)
 
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
