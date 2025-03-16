@@ -2,8 +2,11 @@ import os
 import django
 from datetime import datetime, timedelta
 import Levenshtein
+from django.http import JsonResponse
+from .firebase import send_push_notification
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'parkingProject.settings')
-
+from django.core.mail import send_mail
+from django.conf import settings
 django.setup()
 
 import cv2
@@ -137,11 +140,13 @@ def check_parking_status(parking, park_img):
                     parking.save()
                     request_data['verified'] = True
                     request_data['message'] = 'User has been verified!'
-                # else:
-                    ######################################################################
-                    #parking.is_saved = False
-                    #TO DO
-                    ######################################################################
+                    sendMailCases(parking.driver, "recognize")
+                else:
+                    parking.unauthorized_parking = True
+                    parking.save()
+                    request_data['verified'] = False
+                    request_data['message'] = f"Unauthorized vehicle detected in parking {parking.id}. Expected: {actual_plate}, Found: {predicted_plate_number}"
+                    sendMailCases(parking.driver, "a")
         
         send_verification_to_server(request_data)
 
@@ -150,13 +155,38 @@ def send_verification_to_server(request_data):
     headers = {
         'Content-Type': 'application/json'
     }
-
+    
     response = requests.post('http://localhost:8000/parkinglot/verificationError', json=request_data,
     headers=headers)
     if response.status_code == 200:
         print("Request sent successfully!")
     else:
         print(f"Error: {response.status_code}")
+
+def sendMailCases(user,time_park):
+    if time_park =="a":
+        send_mail("Unauthorized vehicle detected in your reserved parking spot!",
+                "someone else has been entered to your parking!",
+                settings.DEFAULT_FROM_EMAIL,[user.email])
+    elif time_park == "recognize":
+        send_mail("We recognize you at the parking!",
+                f"Hello {user.name}, we recognize you at the parking lot! enjoy your parking!",
+                settings.DEFAULT_FROM_EMAIL,[user.email])
+    else:
+        send_mail("Your parking is not saved anymore!",
+              f"The parking that you saved for {time_park} minutes, is not saved anymore.",
+              settings.DEFAULT_FROM_EMAIL,[user.email])
+
+
+
+
+
+# def send_notification_to_user(request,token):
+#     user_token = "USER_DEVICE_TOKEN"  # ה-Token של המשתמש מהאפליקציה
+#     send_push_notification(user_token, "Time Over! the parking lot became free now.")
+#     return JsonResponse({"status": "Notification sent!"})
+
+
 
 
 if __name__ == "__main__":

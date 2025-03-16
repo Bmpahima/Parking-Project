@@ -9,7 +9,10 @@ from django.utils import timezone
 import json
 from django.db import transaction
 from parkingAuth.models import ParkingHistory
-
+from django.utils import timezone
+from django.core.mail import send_mail
+from .models import Parking
+from .main import sendMailCases
 
 
 class AllParkingLot (View):
@@ -87,6 +90,17 @@ class SaveParking(View):
             with transaction.atomic():
                 selected_parking = Parking.objects.select_for_update().get(id=id)
                 user_parking = parkingAuth.objects.get(id=user_id)
+                if selected_parking.is_saved and selected_parking.reserved_until and selected_parking.reserved_until <= timezone.now():
+                    user = selected_parking.driver
+                    time_park = (selected_parking.reserved_until - timezone.now()).total_seconds() // 60
+                    if user:
+                        sendMailCases(user, time_park)
+
+                    selected_parking.is_saved = False
+                    selected_parking.driver = None
+                    selected_parking.reserved_until = None
+                    selected_parking.save()
+                
                 if selected_parking.occupied or selected_parking.is_saved:
                     return JsonResponse({'error':"This parking spot is not available!"}, status=400)
 
@@ -113,7 +127,7 @@ class SaveParking(View):
 
         except Exception as e:
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
-            
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ReleaseParking(View):
