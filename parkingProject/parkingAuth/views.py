@@ -17,6 +17,9 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.contrib.auth.hashers import make_password
 import random 
+from django.utils import timezone
+
+
 
 
 
@@ -184,8 +187,8 @@ class GetHistory(View):
             driver_history = driver.history.all()
             for history in driver_history:
                 if history.end_time:
-                    start_time_string = history.start_time.strftime("%H:%M")
-                    end_time_string = history.end_time.strftime("%H:%M")
+                    start_time_string = timezone.localtime(history.start_time).strftime("%H:%M")
+                    end_time_string = timezone.localtime(history.end_time).strftime("%H:%M")
                     start_date_string = history.start_time.strftime("%Y-%m-%d")
                     end_date_string = history.end_time.strftime("%Y-%m-%d")
                     list_history.append({
@@ -213,8 +216,8 @@ class AllParksHistory(View):
             list_history = []
             for history in park_history:
                 if history.end_time:
-                    start_time_string = history.start_time.strftime("%H:%M")
-                    end_time_string = history.end_time.strftime("%H:%M")
+                    start_time_string = timezone.localtime(history.start_time).strftime("%H:%M")
+                    end_time_string = timezone.localtime(history.end_time).strftime("%H:%M")
                     start_date_string = history.start_time.strftime("%Y-%m-%d")
                     end_date_string = history.end_time.strftime("%Y-%m-%d")
                     list_history.append({
