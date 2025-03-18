@@ -183,20 +183,21 @@ class GetHistory(View):
             list_history = []
             driver_history = driver.history.all()
             for history in driver_history:
-                start_time_string = history.start_time.strftime("%H:%M")
-                end_time_string = history.end_time.strftime("%H:%M")
-                start_date_string = history.start_time.strftime("%Y-%m-%d")
-                end_date_string = history.end_time.strftime("%Y-%m-%d")
-                list_history.append({
-                    "parking_lot":history.parking_lot.name,
-                    "start_time":start_time_string,
-                    "end_time":end_time_string,
-                    "start_date":start_date_string,
-                    "end_date":end_date_string,
-                     "license_number":history.driver.license_number,
-                    "first_name": history.driver.first_name,
-                    "last_name": history.driver.last_name,
-                })
+                if history.end_time:
+                    start_time_string = history.start_time.strftime("%H:%M")
+                    end_time_string = history.end_time.strftime("%H:%M")
+                    start_date_string = history.start_time.strftime("%Y-%m-%d")
+                    end_date_string = history.end_time.strftime("%Y-%m-%d")
+                    list_history.append({
+                        "parking_lot":history.parking_lot.name,
+                        "start_time":start_time_string,
+                        "end_time":end_time_string,
+                        "start_date":start_date_string,
+                        "end_date":end_date_string,
+                        "license_number":history.driver.license_number,
+                        "first_name": history.driver.first_name,
+                        "last_name": history.driver.last_name,
+                    })
             return JsonResponse(list_history, status=200,safe=False)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON format.'}, status=400)
@@ -211,20 +212,21 @@ class AllParksHistory(View):
             park_history = ParkingHistory.objects.filter(parking_lot__id=parkingLotId).all()
             list_history = []
             for history in park_history:
-                start_time_string = history.start_time.strftime("%H:%M")
-                end_time_string = history.end_time.strftime("%H:%M")
-                start_date_string = history.start_time.strftime("%Y-%m-%d")
-                end_date_string = history.end_time.strftime("%Y-%m-%d")
-                list_history.append({
-                    "parking_lot":history.parking_lot.name,
-                    "start_time":start_time_string,
-                    "end_time":end_time_string,
-                    "start_date":start_date_string,
-                    "end_date":end_date_string,
-                    "license_number":history.driver.license_number,
-                    "first_name": history.driver.first_name,
-                    "last_name": history.driver.last_name,
-                })
+                if history.end_time:
+                    start_time_string = history.start_time.strftime("%H:%M")
+                    end_time_string = history.end_time.strftime("%H:%M")
+                    start_date_string = history.start_time.strftime("%Y-%m-%d")
+                    end_date_string = history.end_time.strftime("%Y-%m-%d")
+                    list_history.append({
+                        "parking_lot":history.parking_lot.name,
+                        "start_time":start_time_string,
+                        "end_time":end_time_string,
+                        "start_date":start_date_string,
+                        "end_date":end_date_string,
+                        "license_number":history.driver.license_number,
+                        "first_name": history.driver.first_name,
+                        "last_name": history.driver.last_name,
+                    })
             return JsonResponse(list_history, status=200,safe=False)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON format.'}, status=400)
