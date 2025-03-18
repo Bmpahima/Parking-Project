@@ -3,7 +3,7 @@ import django
 from datetime import datetime, timedelta
 import Levenshtein
 from django.http import JsonResponse
-from .firebase import send_push_notification
+# from .firebase import send_push_notification
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'parkingProject.settings')
 from django.core.mail import send_mail
 from django.conf import settings
@@ -32,7 +32,13 @@ frame = int(fps * 5)
 frame_count = 0
 
 # [Parking, Parking, Parking, Parking, Parking, Parking]
-parkingList = ParkingLot.objects.filter(name=parking_lot_name)[0].parkings.all()
+queryset = ParkingLot.objects.filter(name=parking_lot_name)
+if queryset.exists():
+    parkingList = queryset.first().parkings.all()
+else:
+    print(f"No parking lot found with name: {parking_lot_name}")
+    parkingList = []
+
 
 # with open('parking_coordinates.pkl', 'rb') as f:
 #     positionList = pickle.load(f)
