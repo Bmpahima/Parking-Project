@@ -15,26 +15,28 @@ import numpy as np
 import requests
 from parkingApp.YoloModels.YoloModelManager import ModelManager
 from parkingApp.util.image_processing import crop_image_by_points, set_text_position
+from parkingApp.util.email_formatting import email_format
 from parkingApp.models import Parking, ParkingLot
 from django.utils import timezone
 
 
+# initialization: 
+model = ModelManager() # המודלים שיצרנו: מכוניות, לוחיות ומספרים
 
-model = ModelManager()
-
-vehicle = [0, 1]
+vehicle = [0, 1] # קלאסים של כלי רכב, 0 - מכוניתת 1 - אופנוע
 
 cap = cv2.VideoCapture('./parkingApp/images/IMG_6572.mov')
-parking_lot_name = 'tester'
+parking_lot_name = 'tester' # שם החניון הנסרק
 
+# הגדרות לצורך סריקת החניון כל חמש פריימים
 fps = cap.get(cv2.CAP_PROP_FPS)
 frame = int(fps * 5)
 frame_count = 0
 
 # [Parking, Parking, Parking, Parking, Parking, Parking]
-queryset = ParkingLot.objects.filter(name=parking_lot_name)
+queryset = ParkingLot.objects.filter(name=parking_lot_name) # מחזיר לנו את החניון ואת כל החניות בו
 if queryset.exists():
-    parkingList = queryset.first().parkings.all()
+    parkingList = queryset.first().parkings.all() # מחזיר לנו את רשימת החניות בחניון
 else:
     print(f"No parking lot found with name: {parking_lot_name}")
     parkingList = []
@@ -43,49 +45,86 @@ else:
 # with open('parking_coordinates.pkl', 'rb') as f:
 #     positionList = pickle.load(f)
 
+detect_validation_map = {}
+
+# פונקציה לבדיקה אם יש רכב בכל החניות בחניון
+# אם יש רכב בחניה מסוימת אנחנו מעדכנים את מצב החנייה: מעדכן רק תפוסה או פנויה         
 def parking_prediction(img):
+    updated_parkings = []
+
     for i in range(len(parkingList)):
-        image = crop_image_by_points(img, parkingList[i].coords) # the image of the parking
+        parking = parkingList[i]
+        image = crop_image_by_points(img, parking.coords) # תמונת החנייה 
+
         vehicle_predictions = model.free_or_occupied_prediction(image)
+        detected_classes = vehicle_predictions[0] if vehicle_predictions else [] 
+        detected = any(cls in vehicle for cls in detected_classes)
 
-        detected_classes = vehicle_predictions[0] if vehicle_predictions else []
-        parkingList[i].occupied = any(cls in vehicle for cls in detected_classes)
-               
-    Parking.objects.bulk_update(parkingList, ['occupied'])
+        if detected != parking.occupied: # נבדוק אם היה שינוי במצב החנייה
+            if not detected and parking.occupied: # כלומר אם קודם היה רכב ועכשיו אין רכב
+                park_id = parking.id
+
+                if park_id not in detect_validation_map:
+                    detect_validation_map[park_id] = 1
+                else:
+                    detect_validation_map[park_id] += 1
+            
+                if detect_validation_map[park_id] >= 3:
+                    parking.occupied = False
+
+                    if parking.driver:
+                        sendEmailToUser(parking.driver, "forgot")
+                        # לשלוח לו מייל אל תשכח לצאתתתת
+
+                    updated_parkings.append(parking)
+                    detect_validation_map[park_id] = 0
+
+            else: # כלומר אם קודם לא היה רכב ועכשיו יש רכב 
+                parking.occupied = True
+                detect_validation_map[parking.id] = 0
+                updated_parkings.append(parking)
+
+        elif detected == parking.occupied:
+            detect_validation_map[parking.id] = 0
+
+    if updated_parkings: # אם יש חניות לעדכון נעדכן רקקקקקק אותןןןן!          
+        Parking.objects.bulk_update(updated_parkings, ['occupied'])
 
 
+# פונקציה שמבצעת את הסריקה של כל החניות, ומחזירה את מספר החניות התפוסות ומספר החניות הפנויות
 def liveParkingDetection(img):
     free_parking_counter = 0
 
-    parking_prediction(img)
+    parking_prediction(img) # עדכון מצב החנייה בחניון
 
     for i, pos in enumerate(parkingList):
         if not pos.occupied:
-            free_parking_counter += 1
+            free_parking_counter += 1 # אם מצאנו חנייה פנויה
 
     total_spaces = len(parkingList)
     occupied_parking_spaces = total_spaces - free_parking_counter
 
-    return img, free_parking_counter, occupied_parking_spaces
+    return img, free_parking_counter, occupied_parking_spaces # מחזירים את התמונה של החניון, מספר החניות הפנויות ומספר החניות התפוסות.
 
 
+# הפונקציה שסורקת את החניון ומציגה את המסך שמראה לנו את מצב החנייה עם הסימונים על המגרש
 def generate_frames():
     global frame_count, save_count
-    while True:
 
-        success, img = cap.read()
+    while True:
+        success, img = cap.read() 
         if not success:
             break
         
-        if frame_count % frame == 0:    
-            parkingList = ParkingLot.objects.filter(name=parking_lot_name)[0].parkings.all()
-            img, free_spaces, occupied_spaces = liveParkingDetection(img)
-            saved_parking = Parking.objects.filter(is_saved=True).all()
+        if frame_count % frame == 0: # כל פריים חמישי נעשה סריקה של כל החניות   
+            parkingList = ParkingLot.objects.filter(name=parking_lot_name)[0].parkings.all() # השגת כל החניות מהדאטה בייס
+            img, free_spaces, occupied_spaces = liveParkingDetection(img) # סריקה
+            saved_parking = Parking.objects.filter(is_saved=True).all() # כל החניות השמורות על ידי משתמשים
             for sp in saved_parking:
-                check_parking_status(sp, crop_image_by_points(img, sp.coords))#########check parking ---->sp
+                check_parking_status(sp, crop_image_by_points(img, sp.coords)) #########check parking ---->sp
             frame_count = 0
 
-        for parking in parkingList:
+        for parking in parkingList: # לולאה שמציירת על החלון את מספר החניות השמורות, התפוסות והפנויות
             pts = np.array(parking.coords, np.int32).reshape((-1, 1, 2))
             color = (0, 0, 255) if parking.occupied else ((255, 0, 0) if parking.is_saved else (0, 255, 0))
             cv2.polylines(img, [pts], isClosed=True, color=color, thickness=2)
@@ -97,15 +136,14 @@ def generate_frames():
                         color=(0, 0, 255), 
                         thickness=2)
             
-        cv2.putText(img, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(img, f"Saved: {len(saved_parking)}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-        cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
+        cv2.putText(img, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2) # חנייה פנויה בצבע ירוק
+        cv2.putText(img, f"Saved: {len(saved_parking)}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2) # חנייה שמורה בצבע כחול
+        cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2) # חנייה תפוסה בצבע אדום
 
         cv2.imshow('Parking Detection', img)
 
             
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord('q'): # לסיום התוכנית נלחץ על q
             break
 
         frame_count += 1
@@ -113,85 +151,98 @@ def generate_frames():
     cap.release()
     cv2.destroyAllWindows()
 
+# הפונקציה שבודקת את סטטוס החניות השמורות, האם הרכב ששמר את החנייה הגיע או לא
 def check_parking_status(parking, park_img):
-    if not parking.occupied:
-        if parking.is_saved and parking.reserved_until < timezone.now():
-            parking.is_saved = False
+    # אם החנייה שמורה ולא תפוסה - צריך לבדוק שהנהג לא מאחר
+    if not parking.occupied: 
+        if parking.is_saved and parking.reserved_until < timezone.now(): # אם זמן השמירה של הבן אדם הגיע - הוא מאחר לכן נבטל את השמירה ונעדכן אותו במייל 
+            sendEmailToUser(parking.driver, "late")
+            parking.is_saved = False # החנייה חוזרת להיות לא שמורה ופנויה לנהגים
             parking.driver = None
             parking.save()
-            request_data = {
-                'verified': False,
-                'message': "User didn't arrived to the parking in time!"
-            }
-            send_verification_to_server(request_data=request_data)
             
+            
+
+    # אם החנייה שמורה ותפוסה - זה אומר שהרכב הגיע בזמן שלו, צריך לוודא שהוא באמת הוא        
     else:
-        parking.is_saved = False
+        parking.is_saved = False # קודם כל החנייה כבר לא שמורה
         parking.save()
-        request_data = {
-            'verified': False,
-            'message': 'User has not been verified!'
-        }
+        print(f"{parking.id} is occupied")
 
-        actual_plate = parking.driver.license_number
-        predicted_plate = model.license_plate_prediction(park_img)
+        actual_plate = parking.driver.license_number # מהו מספר הזהות של האדם ששמר את החנייה
+        predicted_plate = model.license_plate_prediction(park_img) # מה המודל זיהה, מי האדם שפיזית חונה בחנייה כרדע
+        print(f"{predicted_plate} is found")
         if predicted_plate is not None:
-            predicted_number = model.license_number_prediction(crop_image_by_points(park_img, predicted_plate[1]))
+            
+            predicted_number = model.license_number_prediction(crop_image_by_points(park_img, predicted_plate[1])) # זיהוי מספר הלוחי עצמה
             if predicted_number is not None:
-                predicted_plate_number = predicted_number[1]
+                predicted_plate_number = predicted_number[1] # המספר רישוי שהמודל זיהה
+                print(predicted_plate_number)
 
+                # הפעלת מרחק לבינשטיין, עד כמה מספר הרישוי של מי שחונה בחנייה דומה למספר הזהות של האדם שאמור לחנות שם.
                 similarity = 1 - Levenshtein.distance(actual_plate, predicted_plate_number) / max(len(actual_plate), len(predicted_plate_number))
-                if similarity >= 0.7:
-                    parking.is_saved = False
-                    parking.save()
-                    request_data['verified'] = True
-                    request_data['message'] = 'User has been verified!'
-                    sendMailCases(parking.driver, "recognize")
-                else:
-                    parking.unauthorized_parking = True
-                    parking.save()
-                    request_data['verified'] = False
-                    request_data['message'] = f"Unauthorized vehicle detected in parking {parking.id}. Expected: {actual_plate}, Found: {predicted_plate_number}"
-                    sendMailCases(parking.driver, "a")
+
+                # אם המספר יחסית דומה
+                if similarity >= 0.7: 
+                    # parking.is_saved = False
+                    # parking.save()
+                    
+                    sendEmailToUser(parking.driver, "arrived")
+                
+                # אחרת נשלח מייל לנהג ונבדוק אם זה באמת הוא
+                else: 
+                    sendEmailToUser(parking.driver, "taken")
+            else:
+                sendEmailToUser(parking.driver, "undefined")
         
-        send_verification_to_server(request_data)
+        else: 
+            sendEmailToUser(parking.driver, "undefined")
+            # בשלב זה צריך לשלוח מייל למשתמש כדי שיאשר לנו אם זה הוא שנכנס לחנייה או לא
+        
 
 
-def send_verification_to_server(request_data):
-    headers = {
-        'Content-Type': 'application/json'
-    }
+
+# פונקציה ששולחת מייל למשתמש
+def sendEmailToUser(user, status):
+    try:
+        email_content = email_format(status, user_name=user.first_name, userid=user.id) 
+
+        # שליחה בפועל
+        send_mail(
+            subject=email_content['subject'],
+            message=email_content['message'],
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+            html_message=email_content['html_message']
+        )
+
+    except Exception as e:
+        print("Error sending email:", str(e))
+
+
+
+
+
+
+# פונקציה ששולחת בקשה לשרת, צריך לבדוק אם זה רלוונטי
+# def send_verification_to_server(request_data):
+#     headers = {
+#         'Content-Type': 'application/json'
+#     }
     
-    response = requests.post('http://localhost:8000/parkinglot/verificationError', json=request_data,
-    headers=headers)
-    if response.status_code == 200:
-        print("Request sent successfully!")
-    else:
-        print(f"Error: {response.status_code}")
-
-def sendMailCases(user,time_park):
-    if time_park =="a":
-        send_mail("Unauthorized vehicle detected in your reserved parking spot!",
-                "someone else has been entered to your parking!",
-                settings.DEFAULT_FROM_EMAIL,[user.email])
-    elif time_park == "recognize":
-        send_mail("We recognize you at the parking!",
-                f"Hello {user.name}, we recognize you at the parking lot! enjoy your parking!",
-                settings.DEFAULT_FROM_EMAIL,[user.email])
-    else:
-        send_mail("Your parking is not saved anymore!",
-              f"The parking that you saved for {time_park} minutes, is not saved anymore.",
-              settings.DEFAULT_FROM_EMAIL,[user.email])
-
-
-
+#     response = requests.post('http://localhost:8000/parkinglot/verificationError', json=request_data,
+#     headers=headers)
+#     if response.status_code == 200:
+#         print("Request sent successfully!")
+#     else:
+#         print(f"Error: {response.status_code}")
 
 
 # def send_notification_to_user(request,token):
 #     user_token = "USER_DEVICE_TOKEN"  # ה-Token של המשתמש מהאפליקציה
 #     send_push_notification(user_token, "Time Over! the parking lot became free now.")
 #     return JsonResponse({"status": "Notification sent!"})
-
 
 
 

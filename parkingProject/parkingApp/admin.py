@@ -13,7 +13,7 @@ class ParkingLotAdmin(admin.ModelAdmin):
 
 
 class ParkingAdmin(admin.ModelAdmin):
-    list_display = ('id','parking_lot', 'occupied')
+    list_display = ('id','parking_lot', 'occupied', 'is_saved')
     search_fields = ('driver','id','license_number')
 
 

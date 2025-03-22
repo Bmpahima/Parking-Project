@@ -12,7 +12,7 @@ from parkingAuth.models import ParkingHistory
 from django.utils import timezone
 from django.core.mail import send_mail
 from .models import Parking
-from .main import sendMailCases
+from .main import sendEmailToUser
 
 
 class AllParkingLot (View):
@@ -90,11 +90,11 @@ class SaveParking(View):
             with transaction.atomic():
                 selected_parking = Parking.objects.select_for_update().get(id=id)
                 user_parking = parkingAuth.objects.get(id=user_id)
-                if selected_parking.is_saved and selected_parking.reserved_until and selected_parking.reserved_until <= timezone.now():
+                if selected_parking.is_saved and selected_parking.reserved_until and selected_parking.reserved_until <= timezone.now(): # לשקול למחוק את כל התנאי הזה הוא נבדק במיין
                     user = selected_parking.driver
                     time_park = (selected_parking.reserved_until - timezone.now()).total_seconds() // 60
-                    if user:
-                        sendMailCases(user, time_park)
+                    # if user:
+                    #     sendEmailToUser(user, time_park)     
 
                     selected_parking.is_saved = False
                     selected_parking.driver = None
@@ -137,12 +137,10 @@ class ReleaseParking(View):
             parkingId = data.get('id')
             user_id = data.get('user_id')
 
-            print(data)
-
-            selected_parking = Parking.objects.get(id=parkingId) #חניה
-            user_parking = parkingAuth.objects.get(id=user_id) #משתמש
-            if not selected_parking.occupied and selected_parking.is_saved:
-                if selected_parking.driver != user_parking:
+            selected_parking = Parking.objects.get(id=parkingId) 
+            user_parking = parkingAuth.objects.get(id=user_id) 
+            if not selected_parking.occupied and selected_parking.is_saved: # ביטול השמירה - אם החנייה לא תפוסה אך שמורה, כלומר הנהג טרם הגיע לחנייה השמורה לו
+                if selected_parking.driver != user_parking: 
                     return JsonResponse({"error": "you cannot cancel this!"},status=400)
                 
                 selected_parking.is_saved = False
@@ -157,11 +155,24 @@ class ReleaseParking(View):
                 return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
 
-            elif not (selected_parking.occupied or selected_parking.is_saved):
-                return JsonResponse({'error':"This parking spot is not available!"}, status=400)
-        
-            else:
-                selected_parking.occupied = False
+            elif not (selected_parking.occupied or selected_parking.is_saved): # אם החנייה גם לא תפוסה וגם לא שמורה, יש כאן 2 אפשרויות
+                if selected_parking.driver: # הבנאדם יצא מהחנייה ועכשיו הוא רוצה לצאת מהאפליקציה
+                    selected_parking.is_saved = False
+                    selected_parking.driver = None
+                    selected_parking.reserved_until = None
+                    selected_parking.save()
+                    history = ParkingHistory.objects.filter(driver=user_parking, parking_lot=selected_parking.parking_lot, end_time__isnull=True).first()
+                    if history:
+                        history.end_time = timezone.now()
+                        history.save()
+                    return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
+                
+                else: # החנייה לא שמורה ולא תפוסה ולא קשורה לבן אדם
+                    return JsonResponse({'error':"This parking spot is not available!"}, status=400) 
+                
+                
+            else: # החנייה תפוסה, יש שם רכב
+                # חייב לבדוק אם מאפשרים לבן אדם לצאת או לא
                 selected_parking.driver = None
                 selected_parking.reserved_until = None
                 selected_parking.save()
