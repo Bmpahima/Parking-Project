@@ -1,4 +1,4 @@
-def email_format (status, user_name, userid): 
+def email_format (status, user_name, userid, **kwargs): 
     result_format = {
         "subject": "",
         "message": "",
@@ -79,5 +79,36 @@ def email_format (status, user_name, userid):
                 </body>
             </html>
         """
+
+    elif status == "admin_unknown":
+        result_format['subject'] = f"🚨 Unknown Driver is parking in your parking lot"
+        result_format['message'] = f"Hi {user_name}, it looks like your parking spot is occupied, but you're not getting paid! Check it out."
+        result_format['html_message'] = f"""
+            <html>
+                <body>
+                    <p>Hi {user_name},</p>
+                    <p>It looks like your parking spot no. {kwargs['pid']} is occupied, but you're not getting paid!</p>
+                    <p>Phone number: {kwargs['phone_number']}</p>
+                    <p>License number: {kwargs['license_number']}</p>
+                    <p>Check it out. Thanks!</p>
+                </body>
+            </html>
+        """
+    
+    elif status == "unknown_car":
+        result_format['subject'] = "🚨 Unknown Car in Your Parking Spot"
+        result_format['message'] = f"Hi {user_name}, someone is using your parking spot but we couldn’t identify the vehicle. Please check the spot."
+        result_format['html_message'] = f"""
+            <html>
+                <body>
+                    <h2 style="color:red;">Unknown Vehicle Detected</h2>
+                    <p>Hi {user_name},</p>
+                    <p>We've detected that your parking spot no. {kwargs['pid']} is currently occupied by an unknown vehicle.</p>
+                    <p>Please go check the spot and take any necessary action.</p>
+                    <p style="font-size:13px; color:gray;">– Smart Parking Team</p>
+                </body>
+            </html>
+        """
+
 
     return result_format

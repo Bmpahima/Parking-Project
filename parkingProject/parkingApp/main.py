@@ -17,6 +17,7 @@ from parkingApp.YoloModels.YoloModelManager import ModelManager
 from parkingApp.util.image_processing import crop_image_by_points, set_text_position
 from parkingApp.util.email_formatting import email_format
 from parkingApp.models import Parking, ParkingLot
+from parkingAuth.models import ParkingHistory
 from django.utils import timezone
 
 
@@ -45,7 +46,8 @@ else:
 # with open('parking_coordinates.pkl', 'rb') as f:
 #     positionList = pickle.load(f)
 
-detect_validation_map = {}
+detect_validation_map = {} # מוודא שהחנייה אכן פנויה 
+check_occupancy_map = {} # בודק אם החנייה תפוסה ורשומה על מישהו
 
 # פונקציה לבדיקה אם יש רכב בכל החניות בחניון
 # אם יש רכב בחניה מסוימת אנחנו מעדכנים את מצב החנייה: מעדכן רק תפוסה או פנויה         
@@ -59,10 +61,10 @@ def parking_prediction(img):
         vehicle_predictions = model.free_or_occupied_prediction(image)
         detected_classes = vehicle_predictions[0] if vehicle_predictions else [] 
         detected = any(cls in vehicle for cls in detected_classes)
+        park_id = parking.id
 
         if detected != parking.occupied: # נבדוק אם היה שינוי במצב החנייה
             if not detected and parking.occupied: # כלומר אם קודם היה רכב ועכשיו אין רכב
-                park_id = parking.id
 
                 if park_id not in detect_validation_map:
                     detect_validation_map[park_id] = 1
@@ -80,15 +82,46 @@ def parking_prediction(img):
                     detect_validation_map[park_id] = 0
 
             else: # כלומר אם קודם לא היה רכב ועכשיו יש רכב 
+                if not parking.driver:
+                    parking.unauthorized_parking = False
                 parking.occupied = True
                 detect_validation_map[parking.id] = 0
                 updated_parkings.append(parking)
 
         elif detected == parking.occupied:
+            if parking.occupied and parking.unauthorized_parking:
+                if park_id not in check_occupancy_map:
+                    check_occupancy_map[park_id] = 1
+                else:
+                    check_occupancy_map[park_id] += 1
+                    print(f"check no. {check_occupancy_map[park_id]}")
+
+            
+                if check_occupancy_map[park_id] >= 20:
+                    print(f"check no. {check_occupancy_map[park_id]}")
+                    if parking.driver:
+                        last_parked = parking.driver
+                        owner = parking.parking_lot.owner.all()
+
+                        if owner:
+                            sendEmailToUser(owner[0], "admin_unknown", license_number=last_parked.license_number, phone_number=last_parked.phone_number, pid=park_id)
+                        parking.driver = None
+                        parking.unauthorized_parking = False
+                        parking.save()
+                        check_occupancy_map[park_id] = 0
+                    
+                    else:
+                        owner = parking.parking_lot.owner.all()
+                        if owner:
+                            sendEmailToUser(owner[0], "unknown_car", pid=park_id)
+                            parking.unauthorized_parking = False
+                            parking.save()
+
+
             detect_validation_map[parking.id] = 0
 
     if updated_parkings: # אם יש חניות לעדכון נעדכן רקקקקקק אותןןןן!          
-        Parking.objects.bulk_update(updated_parkings, ['occupied'])
+        Parking.objects.bulk_update(updated_parkings, ['occupied', 'unauthorized_parking'])
 
 
 # פונקציה שמבצעת את הסריקה של כל החניות, ומחזירה את מספר החניות התפוסות ומספר החניות הפנויות
@@ -203,9 +236,13 @@ def check_parking_status(parking, park_img):
 
 
 # פונקציה ששולחת מייל למשתמש
-def sendEmailToUser(user, status):
+def sendEmailToUser(user, status, **kwargs):
     try:
-        email_content = email_format(status, user_name=user.first_name, userid=user.id) 
+        if status == "admin_unknown":
+            email_content = email_format(status, user_name=user.first_name, userid=user.id, phone_number=kwargs['phone_number'], license_number=kwargs['license_number'], pid=kwargs['pid']) 
+        elif status == "unknown_car":
+            email_content = email_format(status, user_name=user.first_name, pid=kwargs['pid']) 
+        else: email_content = email_format(status, user_name=user.first_name, userid=user.id) 
 
         # שליחה בפועל
         send_mail(

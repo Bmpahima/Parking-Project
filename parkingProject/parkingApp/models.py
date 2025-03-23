@@ -20,12 +20,8 @@ class ParkingLot(models.Model):
 
 class Parking(models.Model):
     occupied = models.BooleanField(default=False) 
-    #בתוך coords היה רשום -
-    #models.IntegerField()
-    #ביטלתי את זה
     coords = models.JSONField()
     parking_lot = models.ForeignKey(ParkingLot,on_delete=models.CASCADE,related_name="parkings")
-    #license_number = models.CharField(max_length=8, null=True)
     is_saved = models.BooleanField(default=False)
     reserved_until = models.DateTimeField(null=True, blank=True)
     driver = models.OneToOneField(parkingAuth, related_name='parking', null=True, on_delete=models.SET_NULL, blank=True)

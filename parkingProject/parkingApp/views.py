@@ -90,20 +90,20 @@ class SaveParking(View):
             id = data.get('id')
             user_id = data.get('user_id')
             savetime = data.get('savetime')
-            print(data)
+
             with transaction.atomic():
                 selected_parking = Parking.objects.select_for_update().get(id=id)
                 user_parking = parkingAuth.objects.get(id=user_id)
-                if selected_parking.is_saved and selected_parking.reserved_until and selected_parking.reserved_until <= timezone.now(): # לשקול למחוק את כל התנאי הזה הוא נבדק במיין
-                    user = selected_parking.driver
-                    time_park = (selected_parking.reserved_until - timezone.now()).total_seconds() // 60
-                    # if user:
-                    #     sendEmailToUser(user, time_park)     
+                # if selected_parking.is_saved and selected_parking.reserved_until and selected_parking.reserved_until <= timezone.now(): # לשקול למחוק את כל התנאי הזה הוא נבדק במיין
+                #     user = selected_parking.driver
+                #     time_park = (selected_parking.reserved_until - timezone.now()).total_seconds() // 60
+                #     # if user:
+                #     #     sendEmailToUser(user, time_park)     
 
-                    selected_parking.is_saved = False
-                    selected_parking.driver = None
-                    selected_parking.reserved_until = None
-                    selected_parking.save()
+                #     selected_parking.is_saved = False
+                #     selected_parking.driver = None
+                #     selected_parking.reserved_until = None
+                #     selected_parking.save()
                 
                 if selected_parking.occupied or selected_parking.is_saved:
                     return JsonResponse({'error':"This parking spot is not available!"}, status=400)
@@ -177,7 +177,7 @@ class ReleaseParking(View):
                 
             else: # החנייה תפוסה, יש שם רכב
                 # חייב לבדוק אם מאפשרים לבן אדם לצאת או לא
-                selected_parking.driver = None
+                selected_parking.unauthorized_parking = True
                 selected_parking.reserved_until = None
                 selected_parking.save()
 
