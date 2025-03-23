@@ -14,6 +14,10 @@ from django.core.mail import send_mail
 from .models import Parking
 from .main import sendEmailToUser
 
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import os
+
 
 class AllParkingLot (View):
     def get(self, request):
@@ -261,7 +265,38 @@ class getParkingLotUsers(View):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-        
+
+# class graph_days(View):
+#     def get(self, request, parkingLotId):
+#         try:
+#             parking_history = ParkingHistory.objects.filter(id=parking_lot).first()
+#             if not parking_lot:
+#                 return JsonResponse({"error": "Parking lot not found"}, status=404)
+#             parkings = parking_history.parkings.all()
+#             data = []
+#             for p in parkings:
+#                 data.append({
+#                     'start_time': p.start_time,
+#                     'end_time': p.end_time,
+#                     'duration': (p.end_time - p.start_time).total_seconds() / 60 if p.end_time else None
+#                 })
+#             df = pd.DataFrame(data)
+#             if df.empty:
+#                 return JsonResponse({"error": "No parking data found"}, status=404)
+#             df['date'] = df['start_time'].dt.date
+#             summary = df.groupby('date').size().reset_index(name='parking_count')
+#             print(summary)
+
+
+
+
+
+
+
+
+
+
+
         ############################################################################################################################
                                                                 #TO DO
 
