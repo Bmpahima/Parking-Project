@@ -158,7 +158,6 @@ class ReleaseParking(View):
                     history.save()
                 return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
-
             elif not (selected_parking.occupied or selected_parking.is_saved): # אם החנייה גם לא תפוסה וגם לא שמורה, יש כאן 2 אפשרויות
                 if selected_parking.driver: # הבנאדם יצא מהחנייה ועכשיו הוא רוצה לצאת מהאפליקציה
                     selected_parking.is_saved = False

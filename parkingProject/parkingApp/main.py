@@ -194,7 +194,6 @@ def check_parking_status(parking, park_img):
             parking.driver = None
             parking.save()
             
-            
 
     # אם החנייה שמורה ותפוסה - זה אומר שהרכב הגיע בזמן שלו, צריך לוודא שהוא באמת הוא        
     else:
