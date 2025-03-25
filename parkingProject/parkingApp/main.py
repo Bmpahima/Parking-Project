@@ -90,7 +90,8 @@ def parking_prediction(img):
 
         elif detected == parking.occupied:
             if parking.occupied and parking.unauthorized_parking:
-                if park_id not in check_occupancy_map:
+                if park_id not in check_occupancy_map: 
+                    #### אני תוהה אם הייתי צריך לשים את הקוד פה###
                     check_occupancy_map[park_id] = 1
                 else:
                     check_occupancy_map[park_id] += 1 
