@@ -257,9 +257,18 @@ def sendEmailToUser(user, status, **kwargs):
         print("Error sending email:", str(e))
 
 
-
-
-
+def check_vechile_plate(license_plate):
+    try:
+        registered_users = parkingAuth.objects.filter(license_number__isnull=False)
+        for user in registered_users: 
+            similarity = 1 - Levenshtein.distance(user.license_number, license_plate) / max(len(user.license_number), len(license_plate))
+            
+            if similarity >= 0.9:
+                return user
+        return None
+    except Exception as e:
+        print(f"Error checking vehicle registration: {e}")
+        return None 
 
 # פונקציה ששולחת בקשה לשרת, צריך לבדוק אם זה רלוונטי
 # def send_verification_to_server(request_data):
