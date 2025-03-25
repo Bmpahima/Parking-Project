@@ -93,7 +93,7 @@ def parking_prediction(img):
                 if park_id not in check_occupancy_map:
                     check_occupancy_map[park_id] = 1
                 else:
-                    check_occupancy_map[park_id] += 1
+                    check_occupancy_map[park_id] += 1 
                     print(f"check no. {check_occupancy_map[park_id]}")
 
             
@@ -113,6 +113,13 @@ def parking_prediction(img):
                     else:
                         owner = parking.parking_lot.owner.all()
                         if owner:
+                            check_if_user_registered = check_vechile_plate(parking.driver.license_number)
+                            if check_if_user_registered:
+                                parking.driver = check_if_user_registered
+                                parking.unauthorized_parking = False
+                                parking.save()
+                                sendEmailToUser(parking.driver, "wrong_park", pid=park_id)
+                            else:
                             sendEmailToUser(owner[0], "unknown_car", pid=park_id)
                             parking.unauthorized_parking = False
                             parking.save()

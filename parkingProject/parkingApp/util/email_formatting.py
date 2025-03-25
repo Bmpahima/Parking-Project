@@ -67,6 +67,19 @@ def email_format (status, user_name, userid, **kwargs):
                     </body>
                 </html>
             """
+    elif status == "wrong_park":
+        result_format['subject'] = f"Did you make mistake?"
+        result_format['message'] = f"Hello {user_name}, did you make mistake when you entered the parking lot?"
+        result_format['html_message'] = f"""
+            <html>
+                <body>
+                    <h2 style="color:#0253ff;">Hey, {user_name}!</h2>
+                    <p>We’ve detected your vehicle in spot {kwargs['pid']} 🚙, but you didnt reserve this spot. </p>
+                    <p>You required to start the timer, or find another parking spot.</p>
+                    <p style="font-size:13px; color:gray;">No further action is needed.</p>
+                </body>
+            </html>
+        """
     elif status == "forgot":
         result_format['subject'] = f"🅿️ Did you forget to check out?"
         result_format['message'] = f"Hi {user_name}, it looks like your parking spot is now empty, but your session is still active. Please check the app to end it. Thanks!"
