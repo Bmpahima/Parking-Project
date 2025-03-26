@@ -124,7 +124,7 @@ class SaveParking(View):
                 
                 selected_parking.save()
 
-                history = ParkingHistory(parking_lot=selected_parking.parking_lot, driver=user_parking, start_time=timezone.now())
+                history = ParkingHistory(parking=selected_parking, driver=user_parking, start_time=timezone.now())
                 history.save()
 
             return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
@@ -152,19 +152,19 @@ class ReleaseParking(View):
                 selected_parking.reserved_until = None
                 selected_parking.save()
 
-                history = ParkingHistory.objects.filter(driver=user_parking, parking_lot=selected_parking.parking_lot, end_time__isnull=True).first()
+                history = ParkingHistory.objects.filter(driver=user_parking, parking=selected_parking, end_time__isnull=True).first()
                 if history:
                     history.end_time = timezone.now()
                     history.save()
                 return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
-            elif not (selected_parking.occupied or selected_parking.is_saved): # אם החנייה גם לא תפוסה וגם לא שמורה, יש כאן 2 אפשרויות
+            elif not selected_parking.occupied and not selected_parking.is_saved: # אם החנייה גם לא תפוסה וגם לא שמורה, יש כאן 2 אפשרויות
                 if selected_parking.driver: # הבנאדם יצא מהחנייה ועכשיו הוא רוצה לצאת מהאפליקציה
                     selected_parking.is_saved = False
                     selected_parking.driver = None
                     selected_parking.reserved_until = None
                     selected_parking.save()
-                    history = ParkingHistory.objects.filter(driver=user_parking, parking_lot=selected_parking.parking_lot, end_time__isnull=True).first()
+                    history = ParkingHistory.objects.filter(driver=user_parking, parking=selected_parking, end_time__isnull=True).first()
                     if history:
                         history.end_time = timezone.now()
                         history.save()
@@ -178,9 +178,10 @@ class ReleaseParking(View):
                 # חייב לבדוק אם מאפשרים לבן אדם לצאת או לא
                 selected_parking.unauthorized_parking = True
                 selected_parking.reserved_until = None
+                selected_parking.unauthorized_notification_sent = False
                 selected_parking.save()
 
-                history = ParkingHistory.objects.filter(driver=user_parking, parking_lot=selected_parking.parking_lot, end_time__isnull=True).first()
+                history = ParkingHistory.objects.filter(driver=user_parking, parking=selected_parking, end_time__isnull=True).first()
                 if history:
                     history.end_time = timezone.now()
                     history.save()

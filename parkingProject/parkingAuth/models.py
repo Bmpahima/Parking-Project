@@ -7,7 +7,7 @@ class parkingAuth(models.Model):
     email = models.EmailField(unique=True, max_length=250)
     phone_number = models.CharField(max_length=10, unique=True)
     password = models.TextField()
-    license_number = models.CharField(max_length=8)
+    license_number = models.CharField(max_length=8, db_index=True)
     car_type = models.CharField(max_length=50, null=True)
     car_year = models.PositiveIntegerField(null=True)
     car_color = models.CharField(max_length=50, null=True)
@@ -22,7 +22,7 @@ class parkingAuth(models.Model):
         return f"{self.first_name} {self.last_name} - {self.license_number}"
 
 class ParkingHistory(models.Model):
-    parking_lot = models.ForeignKey('parkingApp.ParkingLot', on_delete=models.CASCADE, related_name="history")
+    parking = models.ForeignKey('parkingApp.Parking', on_delete=models.CASCADE, related_name="history", null=True)
     driver = models.ForeignKey('parkingAuth.parkingAuth', on_delete=models.CASCADE, related_name="history")
     start_time = models.DateTimeField(default=now)
     end_time = models.DateTimeField(null=True)

@@ -7,7 +7,7 @@ class parkingAuthAdmin(admin.ModelAdmin):
     list_per_page = 17
 
 class ParkingHistoryAdmin(admin.ModelAdmin):
-    list_display = ('parking_lot', 'driver', 'start_time', 'end_time')
+    list_display = ('parking', 'driver', 'start_time', 'end_time')
     search_fields = ('driver__first_name', 'driver__license_number', 'driver__last_name')
     list_per_page = 17
     actions = ['delete_all_history']  # הוספת הפעולה לרשימה

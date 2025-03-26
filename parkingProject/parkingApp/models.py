@@ -26,6 +26,8 @@ class Parking(models.Model):
     reserved_until = models.DateTimeField(null=True, blank=True)
     driver = models.OneToOneField(parkingAuth, related_name='parking', null=True, on_delete=models.SET_NULL, blank=True)
     unauthorized_parking = models.BooleanField(default=False)
+    unauthorized_notification_sent = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.pk}"
 

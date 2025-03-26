@@ -192,7 +192,8 @@ class GetHistory(View):
                     start_date_string = history.start_time.strftime("%Y-%m-%d")
                     end_date_string = history.end_time.strftime("%Y-%m-%d")
                     list_history.append({
-                        "parking_lot":history.parking_lot.name,
+                        "parking_lot":history.parking.parking_lot.name,
+                        "parking": history.parking.id,
                         "start_time":start_time_string,
                         "end_time":end_time_string,
                         "start_date":start_date_string,
@@ -212,7 +213,7 @@ class GetHistory(View):
 class AllParksHistory(View):
     def get(self,request,parkingLotId):
         try:
-            park_history = ParkingHistory.objects.filter(parking_lot__id=parkingLotId).all()
+            park_history = ParkingHistory.objects.filter(parking__parking_lot__id=parkingLotId).all()
             list_history = []
             for history in park_history:
                 if history.end_time:
@@ -221,7 +222,8 @@ class AllParksHistory(View):
                     start_date_string = history.start_time.strftime("%Y-%m-%d")
                     end_date_string = history.end_time.strftime("%Y-%m-%d")
                     list_history.append({
-                        "parking_lot":history.parking_lot.name,
+                        "parking_lot":history.parking.parking_lot.name,
+                        "parking": history.parking.id,
                         "start_time":start_time_string,
                         "end_time":end_time_string,
                         "start_date":start_date_string,
