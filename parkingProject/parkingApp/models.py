@@ -19,7 +19,7 @@ class ParkingLot(models.Model):
 
 
 class Parking(models.Model):
-    occupied = models.BooleanField(default=False) 
+    occupied = models.BooleanField(default=False, db_index=True) 
     coords = models.JSONField()
     parking_lot = models.ForeignKey(ParkingLot,on_delete=models.CASCADE,related_name="parkings")
     is_saved = models.BooleanField(default=False)
