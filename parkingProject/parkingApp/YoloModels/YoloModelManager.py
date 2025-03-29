@@ -81,7 +81,7 @@ class ModelManager ():
         boxes = predictions[0].boxes
 
         classes = boxes.cls.cpu().tolist()
-        if len(classes) not in [7, 8]:
+        if len(classes) not in [4, 5, 6, 7, 8]:
             return None
         
         for cls in classes:
@@ -117,6 +117,7 @@ class ModelManager ():
         else:
             license_number_text = ''.join(str(x[0]) for x in numbers_x_axis)
 
+        print(license_number_text)
         confidence = boxes.conf.tolist()
 
         results = (

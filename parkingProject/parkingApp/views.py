@@ -150,6 +150,7 @@ class ReleaseParking(View):
                 selected_parking.is_saved = False
                 selected_parking.driver = None
                 selected_parking.reserved_until = None
+                selected_parking.unauthorized_notification_sent = False
                 selected_parking.save()
 
                 history = ParkingHistory.objects.filter(driver=user_parking, parking=selected_parking, end_time__isnull=True).first()
@@ -163,6 +164,7 @@ class ReleaseParking(View):
                     selected_parking.is_saved = False
                     selected_parking.driver = None
                     selected_parking.reserved_until = None
+                    selected_parking.unauthorized_notification_sent = False
                     selected_parking.save()
                     history = ParkingHistory.objects.filter(driver=user_parking, parking=selected_parking, end_time__isnull=True).first()
                     if history:
@@ -175,7 +177,6 @@ class ReleaseParking(View):
                 
                 
             else: # החנייה תפוסה, יש שם רכב
-                # חייב לבדוק אם מאפשרים לבן אדם לצאת או לא
                 selected_parking.unauthorized_parking = True
                 selected_parking.reserved_until = None
                 selected_parking.unauthorized_notification_sent = False
@@ -264,7 +265,17 @@ class getParkingLotUsers(View):
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
+        
+        
+# @method_decorator(csrf_exempt, name='dispatch')
+# class makeParkingAvailable(View):
+#     def post(self, request):
+#         try:
+#             data = json.loads(request.body)
+#             parkingId = data.get('id')
 
+#         except Exception as e:
+#             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
 
 # class graph_days(View):
 #     def get(self, request, parkingLotId):
@@ -287,12 +298,3 @@ class getParkingLotUsers(View):
 #             summary = df.groupby('date').size().reset_index(name='parking_count')
 #             print(summary)
 
-
-
-
-# שמירת החנייה:
-# אני שומר את הזמן בדאטהבייס עבור חניות שנשמרות לא מיידית
-# נניח שיש לי תוכנית בבקאנד שכל סריקה של מכוניות אני בודק אם יש חנייה שהיא משוריינת ואין בה רכב.
-# אם הזמן נגמר, סלמאת.
-# אם הזמן לא נגמר המשך.
-# בפרונט עם ריצת הטיימר אם הגענו לזמן שבו המשתמש צריך לקום, נבדוק על ידי קריאה לדאטהסט אם החנייה תפוסה.
