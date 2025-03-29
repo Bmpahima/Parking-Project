@@ -48,9 +48,9 @@ saved_check_waiting = {}
 # אם יש רכב בחניה מסוימת אנחנו מעדכנים את מצב החנייה: מעדכן רק תפוסה או פנויה         
 def parking_prediction(img):
     updated_parkings = []
+    parking_queryset = Parking.objects.filter(parking_lot__name=parking_lot_name).select_related('parking_lot')
 
-    for i in range(len(parkingList)):
-        parking = parkingList[i]
+    for parking in parking_queryset:
         image = crop_image_by_points(img, parking.coords) 
 
         vehicle_predictions = model.free_or_occupied_prediction(image)
@@ -79,16 +79,22 @@ def parking_prediction(img):
                         updated_parkings.append(parking)
                     detect_validation_map[park_id] = 0
 
+
             else: # כלומר אם קודם לא היה רכב ועכשיו יש רכב 
                 parking.occupied = True
-                if parking.driver is None and not parking.is_saved and not parking.unauthorized_notification_sent:
+                print(f"parking no.{park_id}: {parking.is_saved}")
+                if parking.is_saved:
+                     print(f"{park_id} changed to saved and occupied")
+                     updated_parkings.append(parking)
+                     continue
+                elif not parking.driver and not parking.is_saved and not parking.unauthorized_notification_sent:
                     parking.unauthorized_parking = True
                     owner = parking.parking_lot.owner.first()
                     if owner:
                         sendEmailToUser(owner, "unknown_car", pid=park_id)
                         parking.unauthorized_notification_sent = True
                         print("now there is car")
-                updated_parkings.append(parking)
+                    updated_parkings.append(parking)
 
         # ---------------------------------- נבדוק אם לא היה שינוי במצב החנייה ---------------------------------------
         elif detected == parking.occupied:
@@ -98,7 +104,6 @@ def parking_prediction(img):
                     check_occupancy_map[park_id] = 1
                 else:
                     check_occupancy_map[park_id] += 1 
-
                 # אם אחרי 20 בדיקות עדיין החנייה תפוסה והרכב לא מורשה נשלח מייל לאדמין
                 if check_occupancy_map[park_id] >= 2: 
                     if parking.driver: # הבנאדם מתעכב ביציאה שלו מהחנייה
@@ -114,20 +119,20 @@ def parking_prediction(img):
                         parking.save()
                     
                     else:  # חנייה תפוסה ואין מידע על הנהג
-                        # matched_user = match_license_plate_to_user(image)
+                        matched_user = match_license_plate_to_user(image)
                         owner = parking.parking_lot.owner.first()
-                        # if matched_user:
-                        #     parking.driver = matched_user
-                        #     parking.unauthorized_parking = False
-                        #     parking.unauthorized_notification_sent = True 
-                        #     parking.save()
-                        #     sendEmailToUser(matched_user, "wrong_park", pid=park_id)
-                        # else:
-                        if not parking.unauthorized_notification_sent and owner:
-                            sendEmailToUser(owner, "unknown_car", pid=park_id)
-                            parking.unauthorized_notification_sent = True
-                            print("found onknown car without driver")
+                        if matched_user:
+                            parking.driver = matched_user
+                            parking.unauthorized_parking = False
+                            parking.unauthorized_notification_sent = True 
                             parking.save()
+                            sendEmailToUser(matched_user, "wrong_park", pid=park_id)
+                        else:
+                            if not parking.unauthorized_notification_sent and owner:
+                                sendEmailToUser(owner, "unknown_car", pid=park_id)
+                                parking.unauthorized_notification_sent = True
+                                print("found onknown car without driver")
+                                parking.save()
                     check_occupancy_map[park_id] = 0
 
             detect_validation_map[parking.id] = 0
@@ -137,22 +142,22 @@ def parking_prediction(img):
 
 
 # פונקציה שמבצעת את הסריקה של כל החניות, ומחזירה את מספר החניות התפוסות ומספר החניות הפנויות
+# הפונקציה שמבצעת את הסריקה של כל החניות, ומחזירה את מספר החניות הפנויות, התפוסות והשמורות
 def liveParkingDetection(img):
-    free_parking_counter = 0
+    try:
+        parking_prediction(img)  # עדכון מצב החנייה בחניון
+        parking_queryset = Parking.objects.filter(parking_lot__name=parking_lot_name)
 
-    parking_prediction(img) # עדכון מצב החנייה בחניון
+        free = parking_queryset.filter(occupied=False, is_saved=False).count()
+        saved = parking_queryset.filter(is_saved=True).count()
+        occupied = parking_queryset.filter(occupied=True).count()
 
-    for i, pos in enumerate(parkingList):
-        if not pos.occupied:
-            free_parking_counter += 1 # אם מצאנו חנייה פנויה
-
-    total_spaces = len(parkingList)
-    occupied_parking_spaces = total_spaces - free_parking_counter
-
-    return img, free_parking_counter, occupied_parking_spaces # מחזירים את התמונה של החניון, מספר החניות הפנויות ומספר החניות התפוסות.
+        return free, saved, occupied
+    except Exception as e:
+        print(f"Detection failed: {e}")
+        return 0, 0, 0
 
 
-# הפונקציה שסורקת את החניון ומציגה את המסך שמראה לנו את מצב החנייה עם הסימונים על המגרש
 def generate_frames():
     global frame_count, save_count
 
@@ -160,42 +165,45 @@ def generate_frames():
         success, img = cap.read() 
         if not success:
             break
-        
-        if frame_count % frame == 0: # כל פריים חמישי נעשה סריקה של כל החניות   
-            parkingList = list(Parking.objects.filter(parking_lot__name=parking_lot_name))
-            saved_parking = Parking.objects.filter(is_saved=True).all() # כל החניות השמורות על ידי משתמשים
+
+        if frame_count % frame == 0:  # כל פריים חמישי נעשה סריקה של כל החניות   
+            saved_parking = Parking.objects.filter(is_saved=True).all()  # כל החניות השמורות על ידי משתמשים
             for sp in saved_parking:
-                check_parking_status(sp, crop_image_by_points(img, sp.coords)) #########check parking ---->sp
-            img, free_spaces, occupied_spaces = liveParkingDetection(img) # סריקה
+                check_parking_status(sp, crop_image_by_points(img, sp.coords))  # בדיקת מצב שמירה וזיהוי רכב
             
+            parkingList = Parking.objects.filter(parking_lot__name=parking_lot_name)  # עדכון רשימת חניות מה־DB
+
+            # סריקה של החניון, קבלת מצב כולל
+            free_spaces, saved_spaces, occupied_spaces = liveParkingDetection(img)
             frame_count = 0
 
-        for parking in parkingList: # לולאה שמציירת על החלון את מספר החניות השמורות, התפוסות והפנויות
+        for parking in parkingList:
             pts = np.array(parking.coords, np.int32).reshape((-1, 1, 2))
             color = (0, 0, 255) if parking.occupied else ((255, 0, 0) if parking.is_saved else (0, 255, 0))
             cv2.polylines(img, [pts], isClosed=True, color=color, thickness=2)
-            cv2.putText(img=img, 
-                        text=f"ID: {parking.id}", 
-                        org=set_text_position(parking.coords[0], parking.coords[2]), 
-                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, 
-                        fontScale=0.7, 
-                        color=(0, 0, 255), 
+            cv2.putText(img=img,
+                        text=f"ID: {parking.id}",
+                        org=set_text_position(parking.coords[0], parking.coords[2]),
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                        fontScale=0.7,
+                        color=(0, 0, 255),
                         thickness=2)
-            
-        cv2.putText(img, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2) # חנייה פנויה בצבע ירוק
-        cv2.putText(img, f"Saved: {len(saved_parking)}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2) # חנייה שמורה בצבע כחול
-        cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2) # חנייה תפוסה בצבע אדום
+
+        # ציור הטקסט על המסך
+        cv2.putText(img, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(img, f"Saved: {saved_spaces}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         cv2.imshow('Parking Detection', img)
 
-            
-        if cv2.waitKey(1) & 0xFF == ord('q'): # לסיום התוכנית נלחץ על q
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
         frame_count += 1
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 # הפונקציה שבודקת את סטטוס החניות השמורות, האם הרכב ששמר את החנייה הגיע או לא
 def check_parking_status(parking, park_img):
@@ -215,15 +223,14 @@ def check_parking_status(parking, park_img):
             saved_check_waiting[parking.id] += 1
         
         if saved_check_waiting[parking.id] >= 2 and parking.driver:
-            
             parking.is_saved = False # קודם כל החנייה כבר לא שמורה
             parking.save()
+            print("not saved anymore!")
 
             actual_plate = parking.driver.license_number # מהו מספר הזהות של האדם ששמר את החנייה
             predicted_plate = model.license_plate_prediction(park_img) # מה המודל זיהה, מי האדם שפיזית חונה בחנייה כרדע
-            print(f"{predicted_plate} is found")
             if predicted_plate is not None:
-                
+                print("found a plate!")
                 predicted_number = model.license_number_prediction(crop_image_by_points(park_img, predicted_plate[1])) # זיהוי מספר הלוחי עצמה
                 if predicted_number is not None:
                     predicted_plate_number = predicted_number[1] # המספר רישוי שהמודל זיהה
@@ -248,14 +255,10 @@ def check_parking_status(parking, park_img):
                         print("taken")
                 else:
                     sendEmailToUser(parking.driver, "undefined")
-                    parking.unauthorized_notification_sent = True  # כדי שלא יישלח שוב מייל לאדמין
-                    parking.save()
                     print("undefined1")
             
             else: 
                 sendEmailToUser(parking.driver, "undefined")
-                parking.unauthorized_notification_sent = True  # כדי שלא יישלח שוב מייל לאדמין
-                parking.save()
                 print("undefined2")
                 # בשלב זה צריך לשלוח מייל למשתמש כדי שיאשר לנו אם זה הוא שנכנס לחנייה או לא
             saved_check_waiting[parking.id] = 0
