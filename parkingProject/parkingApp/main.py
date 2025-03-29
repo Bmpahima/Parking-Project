@@ -146,16 +146,16 @@ def parking_prediction(img):
 def liveParkingDetection(img):
     try:
         parking_prediction(img)  # עדכון מצב החנייה בחניון
-        parking_queryset = Parking.objects.filter(parking_lot__name=parking_lot_name)
+    except:
+        print("error in prediction!")
+    parking_queryset = Parking.objects.filter(parking_lot__name=parking_lot_name)
 
-        free = parking_queryset.filter(occupied=False, is_saved=False).count()
-        saved = parking_queryset.filter(is_saved=True).count()
-        occupied = parking_queryset.filter(occupied=True).count()
+    free = parking_queryset.filter(occupied=False, is_saved=False).count()
+    saved = parking_queryset.filter(is_saved=True).count()
+    occupied = parking_queryset.filter(occupied=True).count()
 
-        return free, saved, occupied
-    except Exception as e:
-        print(f"Detection failed: {e}")
-        return 0, 0, 0
+    return free, saved, occupied
+
 
 
 def generate_frames():
