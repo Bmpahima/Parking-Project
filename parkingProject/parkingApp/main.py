@@ -1,10 +1,12 @@
 import os
 import django
 import Levenshtein
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'parkingProject.settings')
+# django.setup()
+
 from django.core.mail import send_mail
 from django.conf import settings
-django.setup()
 import cv2
 import numpy as np
 from parkingApp.YoloModels.YoloModelManager import ModelManager
@@ -13,11 +15,10 @@ from parkingApp.util.email_formatting import email_format
 from parkingApp.models import Parking, ParkingLot
 from parkingAuth.models import parkingAuth
 from django.utils import timezone
-
+from .shared_frame import latest_processed_frame
 
 # initialization: 
 model = ModelManager() # המודלים שיצרנו: מכוניות, לוחיות ומספרים
-
 vehicle = [0, 1] # קלאסים של כלי רכב, 0 - מכוניתת 1 - אופנוע
 
 cap = cv2.VideoCapture('./parkingApp/images/IMG_6572.mov')
@@ -27,6 +28,7 @@ parking_lot_name = 'tester' # שם החניון הנסרק
 fps = cap.get(cv2.CAP_PROP_FPS)
 frame = int(fps * 5)
 frame_count = 0
+
 
 # [Parking, Parking, Parking, Parking, Parking, Parking]
 queryset = ParkingLot.objects.filter(name=parking_lot_name) # מחזיר לנו את החניון ואת כל החניות בו
@@ -194,10 +196,13 @@ def generate_frames():
         cv2.putText(img, f"Saved: {saved_spaces}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
         cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-        cv2.imshow('Parking Detection', img)
+        latest_processed_frame[0] = img.copy()
+        cv2.waitKey(1)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        # cv2.imshow('Parking Detection', img)
+
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
 
         frame_count += 1
 
@@ -305,8 +310,8 @@ def match_license_plate_to_user(image):
     except Exception as e:
         print(f"Not Found!")
         return None
+    
 
-
-
-if __name__ == "__main__":
+def run():
     generate_frames()
+

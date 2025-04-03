@@ -1,6 +1,9 @@
 from django.apps import AppConfig
+import threading
 
-
-class ParkingappConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
+class ParkingAppConfig(AppConfig):
     name = 'parkingApp'
+
+    def ready(self):
+        from .main import run
+        threading.Thread(target=run, daemon=True).start()
