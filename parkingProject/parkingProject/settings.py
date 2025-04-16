@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'parkingAuth',
     'rest_framework.authtoken',
+    'channels',
 
 ]
 REST_FRAMEWORK = {
@@ -91,6 +92,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'parkingProject.wsgi.application'
+ASGI_APPLICATION = 'myproject.asgi.application'
 
 
 # Database

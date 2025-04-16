@@ -13,6 +13,11 @@ from parkingApp.util.email_formatting import email_format
 from parkingApp.models import Parking, ParkingLot
 from parkingAuth.models import parkingAuth
 from django.utils import timezone
+import time
+from picamera2 import Picamera2
+from channels.layers import get_channel_layer
+import json
+
 
 
 # initialization: 
@@ -20,12 +25,24 @@ model = ModelManager() # המודלים שיצרנו: מכוניות, לוחיו
 
 vehicle = [0, 1] # קלאסים של כלי רכב, 0 - מכוניתת 1 - אופנוע
 
-cap = cv2.VideoCapture('./parkingApp/images/IMG_6572.mov')
-parking_lot_name = 'tester' # שם החניון הנסרק
+picam2 = Picamera2()
+
+# הגדר את הפורמט
+picam2.configure(
+    picam2.create_video_configuration(
+        main={"format": "BGR888", "size": (1280, 720)},
+        controls={"FrameRate": 10},
+        display=None
+    )
+)
+
+picam2.start()
+time.sleep(1) 
+parking_lot_name = 'mmmm' # שם החניון הנסרק
 
 # הגדרות לצורך סריקת החניון כל חמש פריימים
-fps = cap.get(cv2.CAP_PROP_FPS)
-frame = int(fps * 5)
+fps = 30
+current_frame = int(10 * 5)
 frame_count = 0
 
 # [Parking, Parking, Parking, Parking, Parking, Parking]
@@ -156,32 +173,56 @@ def liveParkingDetection(img):
 
     return free, saved, occupied
 
+import base64
+
+async def send_frame_to_ws(frame):
+    # המרה של הפריים ל־base64
+    _, buffer = cv2.imencode('.jpg', frame)  # המרת התמונה לפורמט JPEG
+    if buffer is None:
+        print("[ERROR] Failed to encode frame")
+        return
+
+    frame_base64 = base64.b64encode(buffer).decode('utf-8')  # המרה ל־base64
+
+    print(f"[INFO] Sending frame to WebSocket... Size: {len(frame_base64)} characters")
+
+    # שליחה ל־WebSocket
+    channel_layer = get_channel_layer()
+    await channel_layer.group_send(
+        "video_stream",  # שם הקבוצה שאליה אנחנו שולחים
+        {
+            "type": "receive",  # סוג ההודעה
+            "text_data": json.dumps({"frame": frame_base64})  # שולחים את הפריים כ־JSON
+        }
+    )
+
 
 
 def generate_frames():
     global frame_count, save_count
+    cv2.namedWindow('Parking Detection', cv2.WINDOW_NORMAL)
 
     while True:
-        success, img = cap.read() 
-        if not success:
-            break
+        frame = picam2.capture_array() 
+        if frame is None:
+            continue
 
-        if frame_count % frame == 0:  # כל פריים חמישי נעשה סריקה של כל החניות   
+        if frame_count % current_frame == 0:  # כל פריים חמישי נעשה סריקה של כל החניות   
             saved_parking = Parking.objects.filter(is_saved=True).all()  # כל החניות השמורות על ידי משתמשים
             for sp in saved_parking:
-                check_parking_status(sp, crop_image_by_points(img, sp.coords))  # בדיקת מצב שמירה וזיהוי רכב
+                check_parking_status(sp, crop_image_by_points(frame, sp.coords))  # בדיקת מצב שמירה וזיהוי רכב
             
             parkingList = Parking.objects.filter(parking_lot__name=parking_lot_name)  # עדכון רשימת חניות מה־DB
 
             # סריקה של החניון, קבלת מצב כולל
-            free_spaces, saved_spaces, occupied_spaces = liveParkingDetection(img)
+            free_spaces, saved_spaces, occupied_spaces = liveParkingDetection(frame)
             frame_count = 0
 
         for parking in parkingList:
             pts = np.array(parking.coords, np.int32).reshape((-1, 1, 2))
             color = (0, 0, 255) if parking.occupied else ((255, 0, 0) if parking.is_saved else (0, 255, 0))
-            cv2.polylines(img, [pts], isClosed=True, color=color, thickness=2)
-            cv2.putText(img=img,
+            cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=2)
+            cv2.putText(img=frame,
                         text=f"ID: {parking.id}",
                         org=set_text_position(parking.coords[0], parking.coords[2]),
                         fontFace=cv2.FONT_HERSHEY_SIMPLEX,
@@ -190,18 +231,18 @@ def generate_frames():
                         thickness=2)
 
         # ציור הטקסט על המסך
-        cv2.putText(img, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(img, f"Saved: {saved_spaces}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-        cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        cv2.putText(frame, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(frame, f"Saved: {saved_spaces}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        cv2.putText(frame, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-        cv2.imshow('Parking Detection', img)
+        send_frame_to_ws(frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
         frame_count += 1
 
-    cap.release()
+    picam2.stop()
     cv2.destroyAllWindows()
 
 
