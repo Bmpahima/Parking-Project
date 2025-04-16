@@ -4,6 +4,7 @@ import os
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'parkingProject.settings')
+os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 django.setup()
 
@@ -14,9 +15,11 @@ import os
 import numpy as np
 from parkingApp.util.image_processing import set_text_position, get_first_frame
 from parkingApp.models import Parking, ParkingLot
+from picamera2 import Picamera2
+import time
 
 
-original_img_path = './parkingApp/images/tester.jpg'
+original_img_path = './parkingApp/images/tester4.jpg'
 
 try:
     with open('parking_coordinates.pkl', 'rb') as f:
@@ -63,34 +66,37 @@ def mouseclick(events, x, y, flags, params):
         pickle.dump(positionList, f)
 
 
-def initial_parking_mark():
+def initial_parking_mark():    
+    cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
+    cv2.setMouseCallback("Image", mouseclick)
+
     while True:
         image = cv2.imread(original_img_path)
+
+        if image is None:
+            break
 
         for pos in positionList:
             pts = np.array(pos['points'], np.int32).reshape((-1, 1, 2))
             cv2.polylines(image, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
-            cv2.putText(img=image, 
-                        text=f"ID: {pos['id']}", 
-                        org=set_text_position(pos['points'][0], pos['points'][2]), 
-                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, 
-                        fontScale=0.7, 
-                        color=(0, 0, 255), 
+            cv2.putText(img=image,
+                        text=f"ID: {pos['id']}",
+                        org=set_text_position(pos['points'][0], pos['points'][2]),
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                        fontScale=0.7,
+                        color=(0, 0, 255),
                         thickness=2)
 
         for pt in current_pos:
             cv2.circle(image, pt, radius=5, color=(0, 255, 0), thickness=-1)
 
-        cv2.namedWindow("Image", cv2.WINDOW_NORMAL) 
         cv2.imshow("Image", image)
-        cv2.setMouseCallback("Image", mouseclick)
 
-        k = cv2.waitKey(1)
-        if k == ord('q') or k == ord('Q'):
+        key = cv2.waitKey(20) & 0xFF
+        if key == 27:  # ESC
             break
 
     cv2.destroyAllWindows()
-
 
 
 import requests
@@ -165,11 +171,33 @@ def save_to_db(name, payment, long, lat):
 if __name__ == "__main__":
 
     if not os.path.exists(original_img_path):
-        frame = get_first_frame("./parkingApp/images/IMG_6572.mov")
-        if frame is None:
-            exit(1)
+        print("Taking still image from camera...")
 
-        cv2.imwrite(original_img_path, frame)
+        picam2 = Picamera2()
+        picam2.configure(
+            picam2.create_still_configuration(
+                main={"format": 'BGR888', "size": (1280, 720)},
+                display=None  # מונע פתיחת חלון תצוגה
+            )
+        )
+        picam2.start()
+        time.sleep(2)
+
+        try:
+            frame = picam2.capture_array()
+            if frame is None:
+                raise RuntimeError("No frame captured from camera")
+
+            cv2.imwrite(original_img_path, frame)
+            print(f"Saved image to: {original_img_path}")
+
+        except Exception as e:
+            print(f"[ERROR] Failed to capture image: {e}")
+            exit(1)
+        
+        finally:
+            picam2.stop()
+
 
     initial_parking_mark()
 
