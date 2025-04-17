@@ -1,3 +1,5 @@
+# daphne -b 0.0.0.0 -p 8000 parkingProject.asgi:application
+
 import os
 import django
 import Levenshtein
@@ -17,6 +19,8 @@ import time
 from picamera2 import Picamera2
 from channels.layers import get_channel_layer
 import json
+import asyncio
+
 
 
 
@@ -99,7 +103,6 @@ def parking_prediction(img):
 
             else: # כלומר אם קודם לא היה רכב ועכשיו יש רכב 
                 parking.occupied = True
-                print(f"parking no.{park_id}: {parking.is_saved}")
                 if parking.is_saved:
                      print(f"{park_id} changed to saved and occupied")
                      updated_parkings.append(parking)
@@ -176,23 +179,18 @@ def liveParkingDetection(img):
 import base64
 
 async def send_frame_to_ws(frame):
-    # המרה של הפריים ל־base64
-    _, buffer = cv2.imencode('.jpg', frame)  # המרת התמונה לפורמט JPEG
+    _, buffer = cv2.imencode('.jpg', frame)
     if buffer is None:
-        print("[ERROR] Failed to encode frame")
+        print("Failed to encode frame")
         return
 
-    frame_base64 = base64.b64encode(buffer).decode('utf-8')  # המרה ל־base64
-
-    print(f"[INFO] Sending frame to WebSocket... Size: {len(frame_base64)} characters")
-
-    # שליחה ל־WebSocket
+    frame_base64 = base64.b64encode(buffer).decode('utf-8')  
     channel_layer = get_channel_layer()
     await channel_layer.group_send(
-        "video_stream",  # שם הקבוצה שאליה אנחנו שולחים
+        "video_stream",  
         {
-            "type": "receive",  # סוג ההודעה
-            "text_data": json.dumps({"frame": frame_base64})  # שולחים את הפריים כ־JSON
+            "type": "receive",  
+            "text_data": json.dumps({"frame": frame_base64})
         }
     )
 
@@ -235,7 +233,7 @@ def generate_frames():
         cv2.putText(frame, f"Saved: {saved_spaces}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
         cv2.putText(frame, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-        send_frame_to_ws(frame)
+        asyncio.run(send_frame_to_ws(frame))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -348,6 +346,12 @@ def match_license_plate_to_user(image):
         return None
 
 
+def start_parking_loop():
+    try:
+        generate_frames()
+    except Exception as e:
+        print(f"Error in main: {str(e)}")
+
 
 if __name__ == "__main__":
-    generate_frames()
+    start_parking_loop()

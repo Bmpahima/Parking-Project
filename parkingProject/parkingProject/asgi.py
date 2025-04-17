@@ -18,7 +18,16 @@ application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            parkingApp.routing.websocket_urlpatterns  # שימו לב שמפנים פה ל־websocket_urlpatterns
+            parkingApp.routing.websocket_urlpatterns  
         )
     ),
 })
+
+
+import threading
+from parkingApp.main import start_parking_loop  
+
+def run_main():
+    start_parking_loop() 
+
+threading.Thread(target=run_main, daemon=True).start()

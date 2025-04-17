@@ -4,20 +4,24 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 class VideoConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_group_name = "video_stream"
+
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
+
         await self.accept()
+        print("Client connected.")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
         )
+        print("Client disconnected.")
 
-    async def receive(self, text_data):
-        frame = text_data  # מקבלים את הפריים
-        await self.send(text_data=json.dumps({
-            'frame': frame  # שולחים את הפריים כ־JSON
-        }))
+    async def receive(self, event):
+        frame_data = event.get("text_data")
+
+        if frame_data:
+            await self.send(text_data=frame_data)
