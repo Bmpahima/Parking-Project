@@ -42,7 +42,7 @@ picam2.configure(
 
 picam2.start()
 time.sleep(1) 
-parking_lot_name = 'mmmm' # שם החניון הנסרק
+parking_lot_name = 'raspi' # שם החניון הנסרק
 
 # הגדרות לצורך סריקת החניון כל חמש פריימים
 fps = 30
