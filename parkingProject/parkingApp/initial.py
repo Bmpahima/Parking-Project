@@ -1,4 +1,5 @@
 #python -m parkingApp.initial
+#hostname -I
 
 import os
 import django
