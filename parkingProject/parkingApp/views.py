@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.core.mail import send_mail
 from .models import Parking
 from .main import sendEmailToUser
+from .util.parkingStats import get_parking_lot_stat
 
 # import pandas as pd
 # import matplotlib.pyplot as plt
@@ -265,36 +266,26 @@ class getParkingLotUsers(View):
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
-        
-        
-# @method_decorator(csrf_exempt, name='dispatch')
-# class makeParkingAvailable(View):
-#     def post(self, request):
-#         try:
-#             data = json.loads(request.body)
-#             parkingId = data.get('id')
 
-#         except Exception as e:
-#             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
 
-# class graph_days(View):
-#     def get(self, request, parkingLotId):
-#         try:
-#             parking_history = ParkingHistory.objects.filter(id=parking_lot).first()
-#             if not parking_lot:
-#                 return JsonResponse({"error": "Parking lot not found"}, status=404)
-#             parkings = parking_history.parkings.all()
-#             data = []
-#             for p in parkings:
-#                 data.append({
-#                     'start_time': p.start_time,
-#                     'end_time': p.end_time,
-#                     'duration': (p.end_time - p.start_time).total_seconds() / 60 if p.end_time else None
-#                 })
-#             df = pd.DataFrame(data)
-#             if df.empty:
-#                 return JsonResponse({"error": "No parking data found"}, status=404)
-#             df['date'] = df['start_time'].dt.date
-#             summary = df.groupby('date').size().reset_index(name='parking_count')
-#             print(summary)
+@method_decorator(csrf_exempt, name='dispatch')
+class GetParkingStats(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            print(data)
+            id = data.get('id')
+            parking_lot_id = data.get('parkinglot')
+            month = data.get('month')
+            year = data.get('year')
+
+            get_parking_lot_statistics = get_parking_lot_stat(id, parking_lot_id, month, year)
+            if get_parking_lot_statistics is None:
+                return JsonResponse({"error": "No data found for the given parking lot"}, status=404)
+            
+            return JsonResponse({"success": "success"}, status=200, safe=False)
+
+        except Exception as e:
+            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}', "errorMessage": "Error excepted"}, status=500)
+        
 

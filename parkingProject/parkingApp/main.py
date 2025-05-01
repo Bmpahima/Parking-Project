@@ -74,7 +74,7 @@ def parking_prediction(img):
                     parking.unauthorized_parking = False
                     parking.unauthorized_notification_sent = False  
                     if parking.driver:
-                        sendEmailToUser(parking.driver, "forgot")
+                        # sendEmailToUser(parking.driver, "forgot")
                         parking.driver = None
                         parking.save()
                     else: 
@@ -93,7 +93,7 @@ def parking_prediction(img):
                     parking.unauthorized_parking = True
                     owner = parking.parking_lot.owner.first()
                     if owner:
-                        sendEmailToUser(owner, "unknown_car", pid=park_id)
+                        # sendEmailToUser(owner, "unknown_car", pid=park_id)
                         parking.unauthorized_notification_sent = True
                         print("now there is car")
                     updated_parkings.append(parking)
@@ -113,7 +113,7 @@ def parking_prediction(img):
                         owner = parking.parking_lot.owner.all()
 
                         if owner:
-                            sendEmailToUser(owner[0], "admin_unknown", license_number=last_parked.license_number, phone_number=last_parked.phone_number, pid=park_id)
+                            # sendEmailToUser(owner[0], "admin_unknown", license_number=last_parked.license_number, phone_number=last_parked.phone_number, pid=park_id)
                             parking.unauthorized_notification_sent = True 
                             print("found onknown car w driver")
                         parking.driver = None
@@ -128,10 +128,10 @@ def parking_prediction(img):
                             parking.unauthorized_parking = False
                             parking.unauthorized_notification_sent = True 
                             parking.save()
-                            sendEmailToUser(matched_user, "wrong_park", pid=park_id)
+                            # sendEmailToUser(matched_user, "wrong_park", pid=park_id)
                         else:
                             if not parking.unauthorized_notification_sent and owner:
-                                sendEmailToUser(owner, "unknown_car", pid=park_id)
+                                # sendEmailToUser(owner, "unknown_car", pid=park_id)
                                 parking.unauthorized_notification_sent = True
                                 print("found onknown car without driver")
                                 parking.save()
@@ -215,7 +215,7 @@ def check_parking_status(parking, park_img):
     # אם החנייה שמורה ולא תפוסה - צריך לבדוק שהנהג לא מאחר
     if not parking.occupied: 
         if parking.is_saved and parking.reserved_until < timezone.now(): # אם זמן השמירה של הבן אדם הגיע - הוא מאחר לכן נבטל את השמירה ונעדכן אותו במייל 
-            sendEmailToUser(parking.driver, "late")
+            # sendEmailToUser(parking.driver, "late")
             parking.is_saved = False # החנייה חוזרת להיות לא שמורה ופנויה לנהגים
             parking.driver = None
             parking.save()        
@@ -246,7 +246,7 @@ def check_parking_status(parking, park_img):
                     print(f"similarity: {similarity}")
                     # אם המספר יחסית דומה
                     if similarity >= 0.5: 
-                        sendEmailToUser(parking.driver, "arrived")
+                        # sendEmailToUser(parking.driver, "arrived")
                         parking.unauthorized_parking = False
                         parking.unauthorized_notification_sent = True  # כדי שלא יישלח שוב מייל לאדמין
                         print("welcome!!!!!!")
@@ -254,16 +254,16 @@ def check_parking_status(parking, park_img):
                         
                     # אחרת נשלח מייל לנהג ונבדוק אם זה באמת הוא
                     else: 
-                        sendEmailToUser(parking.driver, "taken")
+                        # sendEmailToUser(parking.driver, "taken")
                         parking.unauthorized_notification_sent = True  # כדי שלא יישלח שוב מייל לאדמין
                         parking.save()
                         print("taken")
                 else:
-                    sendEmailToUser(parking.driver, "undefined")
+                    # sendEmailToUser(parking.driver, "undefined")
                     print("undefined1")
             
             else: 
-                sendEmailToUser(parking.driver, "undefined")
+                # sendEmailToUser(parking.driver, "undefined")
                 print("undefined2")
                 # בשלב זה צריך לשלוח מייל למשתמש כדי שיאשר לנו אם זה הוא שנכנס לחנייה או לא
             saved_check_waiting[parking.id] = 0

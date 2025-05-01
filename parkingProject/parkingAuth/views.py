@@ -72,8 +72,8 @@ class UserRegistrationView(View):
                     'success': 'User logged in successfully!',
                     'user': {
                         'id': new_user.id,
-                        'fname': new_user.first_name.capitalize(),
-                        'lname': new_user.last_name.capitalize(),
+                        'fname': new_user.first_name.title(),
+                        'lname': new_user.last_name.title(),
                         'email': new_user.email,
                         'phoneNumber': new_user.phone_number,
                         'lisenceNumber': new_user.license_number,
@@ -120,8 +120,8 @@ class UserLoginView(View):
                     'success': 'User logged in successfully!',
                     'user': {
                         'id': user.id,
-                        'fname': user.first_name.capitalize(),
-                        'lname': user.last_name.capitalize(),
+                        'fname': user.first_name.title(),
+                        'lname': user.last_name.title(),
                         'email': user.email,
                         'phoneNumber': user.phone_number,
                         'lisenceNumber': user.license_number,
