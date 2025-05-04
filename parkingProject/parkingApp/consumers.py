@@ -33,6 +33,7 @@ class VideoConsumer(AsyncWebsocketConsumer):
 
 class TimerStopConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        print('1')
         self.user_id = self.scope["url_route"]["kwargs"]["user_id"]
         self.group_name = f"user_{self.user_id}"
 
@@ -44,12 +45,14 @@ class TimerStopConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
+        print('2')
         await self.channel_layer.group_discard(
             self.group_name,
             self.channel_name
         )
 
     async def send_stop_timer(self, event):
+        print('3')
         await self.send(text_data=json.dumps({
             "success": True,
             "message": "Stop the Timer."

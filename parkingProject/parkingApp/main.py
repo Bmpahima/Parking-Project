@@ -15,7 +15,7 @@ from parkingApp.YoloModels.YoloModelManager import ModelManager
 from parkingApp.util.image_processing import crop_image_by_points, set_text_position
 from parkingApp.util.email_formatting import email_format
 from parkingApp.models import Parking, ParkingLot
-from parkingAuth.models import parkingAuth
+from parkingAuth.models import parkingAuth, ParkingHistory
 from django.utils import timezone
 from .shared_frame import latest_processed_frame
 from channels.layers import get_channel_layer
@@ -218,13 +218,20 @@ def generate_frames():
 def check_parking_status(parking, park_img):
     # אם החנייה שמורה ולא תפוסה - צריך לבדוק שהנהג לא מאחר
     if not parking.occupied: 
-        if parking.is_saved and parking.reserved_until < timezone.now(): # אם זמן השמירה של הבן אדם הגיע - הוא מאחר לכן נבטל את השמירה ונעדכן אותו במייל 
-            # sendEmailToUser(parking.driver, "late")
-            if parking.driver:
-                notify_user_stop_timer(parking.driver.id)
-            parking.is_saved = False # החנייה חוזרת להיות לא שמורה ופנויה לנהגים
-            parking.driver = None
-            parking.save()     
+        try:
+            if parking.is_saved and parking.reserved_until < timezone.now(): # אם זמן השמירה של הבן אדם הגיע - הוא מאחר לכן נבטל את השמירה ונעדכן אותו במייל 
+                # sendEmailToUser(parking.driver, "late")
+                driver = parking.driver
+                history = ParkingHistory.objects.filter(driver=driver, parking=parking.id, end_time__isnull=True).first()
+                if history:
+                    history.end_time = timezone.now()
+                    history.save()
+                    notify_user_stop_timer(parking.driver.id)
+                parking.is_saved = False # החנייה חוזרת להיות לא שמורה ופנויה לנהגים
+                parking.driver = None
+                parking.save()   
+        except Exception as e:
+            print(e)
    
 
     # אם החנייה שמורה ותפוסה - זה אומר שהרכב הגיע בזמן שלו, צריך לוודא שהוא באמת הוא        
@@ -319,6 +326,7 @@ def match_license_plate_to_user(image):
         return None
     
 def notify_user_stop_timer(user_id):
+    print(f"hey {user_id}")
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         f"user_{user_id}",

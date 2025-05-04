@@ -231,5 +231,3 @@ if __name__ == "__main__":
     #             if number_prediction:
     #                 vehicle_type = get_car_detail(number_prediction[1])
     #                 print(vehicle_type)
-
-    
