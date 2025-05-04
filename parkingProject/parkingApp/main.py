@@ -1,3 +1,5 @@
+# daphne -p 8000 parkingProject.asgi:application
+
 import os
 import django
 import Levenshtein
@@ -16,6 +18,8 @@ from parkingApp.models import Parking, ParkingLot
 from parkingAuth.models import parkingAuth
 from django.utils import timezone
 from .shared_frame import latest_processed_frame
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 # initialization: 
 model = ModelManager() # המודלים שיצרנו: מכוניות, לוחיות ומספרים
@@ -216,9 +220,12 @@ def check_parking_status(parking, park_img):
     if not parking.occupied: 
         if parking.is_saved and parking.reserved_until < timezone.now(): # אם זמן השמירה של הבן אדם הגיע - הוא מאחר לכן נבטל את השמירה ונעדכן אותו במייל 
             # sendEmailToUser(parking.driver, "late")
+            if parking.driver:
+                notify_user_stop_timer(parking.driver.id)
             parking.is_saved = False # החנייה חוזרת להיות לא שמורה ופנויה לנהגים
             parking.driver = None
-            parking.save()        
+            parking.save()     
+   
 
     # אם החנייה שמורה ותפוסה - זה אומר שהרכב הגיע בזמן שלו, צריך לוודא שהוא באמת הוא        
     else:
@@ -310,6 +317,15 @@ def match_license_plate_to_user(image):
     except Exception as e:
         print(f"Not Found!")
         return None
+    
+def notify_user_stop_timer(user_id):
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"user_{user_id}",
+        {
+            "type": "send_stop_timer"
+        }
+    )
     
 
 def run():
