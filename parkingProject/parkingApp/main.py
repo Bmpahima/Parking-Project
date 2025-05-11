@@ -88,7 +88,7 @@ def parking_prediction(img):
 
             else: # כלומר אם קודם לא היה רכב ועכשיו יש רכב 
                 parking.occupied = True
-                print(f"parking no.{park_id}: {parking.is_saved}")
+                
                 if parking.is_saved:
                      print(f"{park_id} changed to saved and occupied")
                      updated_parkings.append(parking)
@@ -201,12 +201,12 @@ def generate_frames():
         cv2.putText(img, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         latest_processed_frame[0] = img.copy()
-        cv2.waitKey(1)
+        # cv2.waitKey(1)
 
-        # cv2.imshow('Parking Detection', img)
+        cv2.imshow('Parking Detection', img)
 
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
         frame_count += 1
 

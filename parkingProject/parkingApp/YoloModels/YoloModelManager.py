@@ -117,7 +117,6 @@ class ModelManager ():
         else:
             license_number_text = ''.join(str(x[0]) for x in numbers_x_axis)
 
-        print(license_number_text)
         confidence = boxes.conf.tolist()
 
         results = (
