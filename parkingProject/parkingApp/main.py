@@ -203,10 +203,10 @@ def generate_frames():
         latest_processed_frame[0] = img.copy()
         # cv2.waitKey(1)
 
-        cv2.imshow('Parking Detection', img)
+        # cv2.imshow('Parking Detection', img)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
 
         frame_count += 1
 

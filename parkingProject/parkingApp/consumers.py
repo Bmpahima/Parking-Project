@@ -25,7 +25,8 @@ class VideoConsumer(AsyncWebsocketConsumer):
             jpg_as_text = base64.b64encode(buffer).decode('utf-8')
 
             try:
-                await self.send(jpg_as_text)  
+                print("sent...")
+                await self.send(json.dumps({"frame": jpg_as_text}))
             except Exception as e:
                 break  
             await asyncio.sleep(0.05) 
