@@ -17,7 +17,7 @@ from parkingApp.util.image_processing import set_text_position, get_first_frame
 from parkingApp.models import Parking, ParkingLot
 
 
-original_img_path = './parkingApp/images/tester.jpg'
+original_img_path = './parkingApp/images/parking1.jpg'
 
 try:
     with open('parking_coordinates.pkl', 'rb') as f:
@@ -166,7 +166,7 @@ def save_to_db(name, payment, long, lat):
 if __name__ == "__main__":
 
     if not os.path.exists(original_img_path):
-        frame = get_first_frame("./parkingApp/images/IMG_6572.mov")
+        frame = get_first_frame("./parkingApp/images/IMG_6818.mov")
         if frame is None:
             exit(1)
 

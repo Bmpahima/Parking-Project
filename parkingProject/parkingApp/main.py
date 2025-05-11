@@ -25,8 +25,8 @@ from asgiref.sync import async_to_sync
 model = ModelManager() # המודלים שיצרנו: מכוניות, לוחיות ומספרים
 vehicle = [0, 1] # קלאסים של כלי רכב, 0 - מכוניתת 1 - אופנוע
 
-cap = cv2.VideoCapture('./parkingApp/images/IMG_6572.mov')
-parking_lot_name = 'tester' # שם החניון הנסרק
+cap = cv2.VideoCapture('./parkingApp/images/IMG_6818.mov')
+parking_lot_name = 'ParkingMoshe' # שם החניון הנסרק
 
 # הגדרות לצורך סריקת החניון כל חמש פריימים
 fps = cap.get(cv2.CAP_PROP_FPS)
