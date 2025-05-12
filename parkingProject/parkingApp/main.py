@@ -226,7 +226,6 @@ def check_parking_status(parking, park_img):
                 if history:
                     history.end_time = timezone.now()
                     history.save()
-                    notify_user_stop_timer(parking.driver.id)
                 parking.is_saved = False # החנייה חוזרת להיות לא שמורה ופנויה לנהגים
                 parking.driver = None
                 parking.save()   
@@ -324,16 +323,6 @@ def match_license_plate_to_user(image):
     except Exception as e:
         print(f"Not Found!")
         return None
-    
-def notify_user_stop_timer(user_id):
-    print(f"hey {user_id}")
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f"user_{user_id}",
-        {
-            "type": "send_stop_timer"
-        }
-    )
     
 
 def run():
