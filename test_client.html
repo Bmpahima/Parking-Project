@@ -10,7 +10,7 @@
     </div>
 
     <script>
-        const wsUrl = "wss://ec49-2a00-a041-e04b-d00-1506-5d9-5706-8fa1.ngrok-free.app/ws/video/";
+        const wsUrl = "ws://localhost:8000/ws/video/"; // שים את הכתובת המקומית שלך
         const imageElement = document.getElementById("live-stream");
 
         const socket = new WebSocket(wsUrl);
@@ -28,6 +28,10 @@
             } catch (e) {
                 console.error("Error parsing frame:", e);
             }
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket Error:", error);
         };
 
         socket.onclose = () => {
