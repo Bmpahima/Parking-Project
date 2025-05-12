@@ -40,9 +40,20 @@ picam2.configure(
     )
 )
 
+print("[DEBUG] Camera configured.")
+
 picam2.start()
+print("[DEBUG] Camera started.")
 time.sleep(1) 
 parking_lot_name = 'raspi' # שם החניון הנסרק
+print("[DEBUG] Testing camera capture...")
+
+test_frame = picam2.capture_array()
+if test_frame is None:
+    print("[ERROR] No frame captured in test.")
+else:
+    print("[DEBUG] Test frame captured successfully.")
+
 
 # הגדרות לצורך סריקת החניון כל חמש פריימים
 fps = 30
@@ -179,6 +190,7 @@ def liveParkingDetection(img):
 import base64
 
 async def send_frame_to_ws(frame):
+    print("sending....")
     _, buffer = cv2.imencode('.jpg', frame)
     if buffer is None:
         print("Failed to encode frame")
@@ -193,55 +205,98 @@ async def send_frame_to_ws(frame):
             "text_data": json.dumps({"frame": frame_base64})
         }
     )
+    print("frame sent...")
 
 
 
 def generate_frames():
     global frame_count, save_count
-    cv2.namedWindow('Parking Detection', cv2.WINDOW_NORMAL)
+    print("[DEBUG] Generating frames...")
+    #cv2.namedWindow('Parking Detection', cv2.WINDOW_NORMAL)
 
     while True:
-        frame = picam2.capture_array() 
-        if frame is None:
-            continue
+        print("[DEBUG] Loop started - attempting to capture frame...")
+        try:
+            frame = picam2.capture_array()
+            if frame is None:
+                print("[ERROR] No frame captured.")
+                continue
 
-        if frame_count % current_frame == 0:  # כל פריים חמישי נעשה סריקה של כל החניות   
-            saved_parking = Parking.objects.filter(is_saved=True).all()  # כל החניות השמורות על ידי משתמשים
-            for sp in saved_parking:
-                check_parking_status(sp, crop_image_by_points(frame, sp.coords))  # בדיקת מצב שמירה וזיהוי רכב
-            
-            parkingList = Parking.objects.filter(parking_lot__name=parking_lot_name)  # עדכון רשימת חניות מה־DB
+            print("[DEBUG] Frame captured successfully.")
+            print(f"[DEBUG] Frame size: {frame.shape} | Type: {type(frame)}")
 
-            # סריקה של החניון, קבלת מצב כולל
-            free_spaces, saved_spaces, occupied_spaces = liveParkingDetection(frame)
-            frame_count = 0
+            # הצגת הפריים
+            # cv2.imshow("Parking Detection", frame)
+            # print("[DEBUG] Frame displayed.")
 
-        for parking in parkingList:
-            pts = np.array(parking.coords, np.int32).reshape((-1, 1, 2))
-            color = (0, 0, 255) if parking.occupied else ((255, 0, 0) if parking.is_saved else (0, 255, 0))
-            cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=2)
-            cv2.putText(img=frame,
-                        text=f"ID: {parking.id}",
-                        org=set_text_position(parking.coords[0], parking.coords[2]),
-                        fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                        fontScale=0.7,
-                        color=(0, 0, 255),
-                        thickness=2)
+        except Exception as e:
+            print(f"[ERROR] Failed to capture frame: {str(e)}")
+            continue  # המשך לניסיון הבא
 
-        # ציור הטקסט על המסך
-        cv2.putText(frame, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(frame, f"Saved: {saved_spaces}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-        cv2.putText(frame, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        # 🔹 בדיקה: האם נבצע סריקה של כל החניות (כל פריים חמישי)
+        if frame_count % current_frame == 0:
+            try:
+                print("[DEBUG] Scanning saved parking spots...")
+                saved_parking = Parking.objects.filter(is_saved=True).all()
+                print(f"[DEBUG] Saved parking spots found: {len(saved_parking)}")
 
-        asyncio.run(send_frame_to_ws(frame))
+                for sp in saved_parking:
+                    print(f"[DEBUG] Checking saved parking: {sp.id}")
+                    check_parking_status(sp, crop_image_by_points(frame, sp.coords))
+                
+                parkingList = Parking.objects.filter(parking_lot__name=parking_lot_name)
+                print(f"[DEBUG] Parking spots in lot: {len(parkingList)}")
 
+                free_spaces, saved_spaces, occupied_spaces = liveParkingDetection(frame)
+                print(f"[DEBUG] Parking scan result - Free: {free_spaces}, Saved: {saved_spaces}, Occupied: {occupied_spaces}")
+                frame_count = 0
+            except Exception as e:
+                print(f"[ERROR] Error scanning parking spots: {str(e)}")
+        else:
+            print(f"[DEBUG] Frame count: {frame_count}")
+
+        # 🔹 שלב 3: ציור גבולות החניות וסטטוס
+        try:
+            for parking in parkingList:
+                pts = np.array(parking.coords, np.int32).reshape((-1, 1, 2))
+                color = (0, 0, 255) if parking.occupied else ((255, 0, 0) if parking.is_saved else (0, 255, 0))
+                cv2.polylines(frame, [pts], isClosed=True, color=color, thickness=2)
+                cv2.putText(frame, f"ID: {parking.id}",
+                            org=set_text_position(parking.coords[0], parking.coords[2]),
+                            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                            fontScale=0.7,
+                            color=(0, 0, 255),
+                            thickness=2)
+
+            # ציור סטטוס כללי
+            cv2.putText(frame, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f"Saved: {saved_spaces}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            cv2.putText(frame, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+            print("[DEBUG] Frame annotated with parking status.")
+        except Exception as e:
+            print(f"[ERROR] Failed to annotate frame: {str(e)}")
+
+        # 🔹 שלב 4: שליחת הפריים דרך WebSocket
+        try:
+            asyncio.run(send_frame_to_ws(frame))
+            print("[DEBUG] Frame sent to WebSocket.")
+        except Exception as e:
+            print(f"[ERROR] Failed to send frame to WebSocket: {str(e)}")
+
+        # 🔹 שלב 6: בדיקה אם יציאה מהלולאה (Q)
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("[DEBUG] Exiting frame generation...")
             break
 
         frame_count += 1
 
+    # 🔹 שלב 7: ניקוי משאבים
     picam2.stop()
     cv2.destroyAllWindows()
+    print("[DEBUG] Camera stopped and resources released.")
+
+
 
 
 # הפונקציה שבודקת את סטטוס החניות השמורות, האם הרכב ששמר את החנייה הגיע או לא
@@ -346,12 +401,16 @@ def match_license_plate_to_user(image):
         return None
 
 
+print("[DEBUG] main.py loaded.")
+
 def start_parking_loop():
     try:
+        print("[DEBUG] Parking loop started.")
         generate_frames()
     except Exception as e:
-        print(f"Error in main: {str(e)}")
-
+        print(f"[ERROR] Error in main: {str(e)}")
 
 if __name__ == "__main__":
+    print("[DEBUG] Starting main process...")
     start_parking_loop()
+
