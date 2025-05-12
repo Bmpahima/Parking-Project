@@ -1,34 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Video Stream</title>
+    <title>Live Stream</title>
 </head>
 <body>
-  <h1>🚗 Live Video Stream</h1>
-  <img id="video" width="640" height="480" alt="Video will appear here..."/>
+    <h2>Live Stream</h2>
+    <div>
+        <img id="live-stream" src="" alt="Loading Stream..." style="width: 800px; height: 450px;">
+    </div>
 
-  <script>
-    const socket = new WebSocket("ws://localhost:8000/ws/video/");
+    <script>
+        const wsUrl = "wss://ec49-2a00-a041-e04b-d00-1506-5d9-5706-8fa1.ngrok-free.app/ws/video/";
+        const imageElement = document.getElementById("live-stream");
 
-    socket.onopen = () => {
-      console.log("Connected to WebSocket");
-    };
+        const socket = new WebSocket(wsUrl);
 
-    socket.onmessage = (event) => {
-      // אפשר להציג את הפריים כתמונה ב־<img>
-      const video = document.getElementById("video");
-      video.src = 'data:image/jpeg;base64,' + event.data;
-    };
+        socket.onopen = () => {
+            console.log("WebSocket connected.");
+        };
 
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
+        socket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.frame) {
+                    imageElement.src = "data:image/jpeg;base64," + data.frame;
+                }
+            } catch (e) {
+                console.error("Error parsing frame:", e);
+            }
+        };
 
-    socket.onclose = () => {
-      console.log("WebSocket disconnected");
-    };
-  </script>
+        socket.onclose = () => {
+            console.log("WebSocket disconnected.");
+            setTimeout(() => {
+                location.reload(); // ניסיון התחברות מחדש
+            }, 5000);
+        };
+    </script>
 </body>
 </html>
