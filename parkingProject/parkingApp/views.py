@@ -279,9 +279,13 @@ class GetParkingStats(View):
             month = data.get('month')
             year = data.get('year')
 
-            get_parking_lot_statistics = get_parking_lot_stat(id, parking_lot_id, month, year)
-            if get_parking_lot_statistics is None:
+            parking_lot_statistics = get_parking_lot_stat(id, parking_lot_id, month, year)
+            print(parking_lot_statistics)
+            if parking_lot_statistics is None:
                 return JsonResponse({"error": "No data found for the given parking lot"}, status=404)
+            
+            if parking_lot_statistics == "No data available":
+                return JsonResponse({"noData": "noData"}, status=200, safe=False)
             
             return JsonResponse({"success": "success"}, status=200, safe=False)
 
