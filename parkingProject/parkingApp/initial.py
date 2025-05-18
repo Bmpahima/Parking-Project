@@ -1,5 +1,22 @@
 #python -m parkingApp.initial
 
+"""
+This script helps manually mark and save parking spot locations based on an image or live capture
+from the Raspberry Pi camera. It lets the user select parking spot polygons via mouse clicks,
+saves the coordinates to a pickle file, optionally queries the address using reverse geolocation,
+and saves the entire parking lot (and all spots) to the database.
+
+Run using:
+    python -m parkingApp.initial
+
+Main Functions:
+- Load or capture an image for marking.
+- Use OpenCV to define parking spots via mouse.
+- Save spot data to .pkl file.
+- Map lot metadata (location, name, address).
+- Save data to Django DB.
+"""
+
 import os
 import django
 
@@ -18,9 +35,10 @@ from parkingApp.models import Parking, ParkingLot
 from picamera2 import Picamera2
 import time
 
-
+# Path to the reference image
 original_img_path = './parkingApp/images/tester4.jpg'
 
+# Load previously saved parking spots if exists
 try:
     with open('parking_coordinates.pkl', 'rb') as f:
         positionList = pickle.load(f)
@@ -31,17 +49,20 @@ current_pos = []
 
 
 def get_next_id():
+    """
+    Generates the next available parking spot ID based on current positions.
+    """
     return max([pos['id'] for pos in positionList]) + 1 if positionList else 0
 
 
-# def save_img(img, points, id):
-#     save_path = os.path.join(save_dir, f'parking_no{id}.png')
-
-    # cv2.imwrite(save_path, crop_image_by_points(img, points))
-    # print(f'Saved cropped image: {save_path}')
-
-
 def mouseclick(events, x, y, flags, params):
+    """
+    Callback for OpenCV mouse events.
+    - Left-click: adds point to current polygon.
+    - Right-click: removes the polygon under the cursor.
+
+    Writes result to 'parking_coordinates.pkl'.
+    """
     global current_pos
 
     if events == cv2.EVENT_LBUTTONDOWN:
@@ -66,7 +87,24 @@ def mouseclick(events, x, y, flags, params):
         pickle.dump(positionList, f)
 
 
-def initial_parking_mark():    
+def initial_parking_mark():
+    """
+    Interactive OpenCV loop for manually marking parking spots on an image.
+
+    - Left-clicking adds a point to the current polygon being drawn.
+    - Once 4 points are selected, a new parking spot polygon is saved.
+    - Right-clicking removes a polygon if the clicked point is inside it.
+    - Existing spots are shown as green-bordered polygons with red ID labels.
+    - Current drawing in progress is shown with green dots.
+
+    Controls:
+        - ESC key exits the marking interface.
+
+    Requires:
+        - 'original_img_path' to be a valid image path.
+        - 'mouseclick' callback to be properly defined.
+        - Global variable 'positionList' to store all marked polygons.
+    """
     cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
     cv2.setMouseCallback("Image", mouseclick)
 
@@ -102,7 +140,16 @@ def initial_parking_mark():
 import requests
 
 def getAddress(latitude, longitude):
-    
+    """
+    Reverse-geocodes GPS coordinates into an address using OpenStreetMap API.
+
+    Args:
+        latitude (float): Latitude of the parking lot.
+        longitude (float): Longitude of the parking lot.
+
+    Returns:
+        dict: Contains 'city' and 'road', or 'error'.
+    """
     try:
         latitude = float(latitude)
         longitude = float(longitude)
@@ -114,7 +161,7 @@ def getAddress(latitude, longitude):
             "lat": latitude,
             "lon": longitude,
             "format": "json",
-            "accept-language": "he"  # תוצאה בעברית
+            "accept-language": "he"  #results on hebrew
         }
 
         headers = {"User-Agent": "MyParkingApp/1.0 (contact@example.com)"}  
@@ -141,6 +188,15 @@ def getAddress(latitude, longitude):
 
 
 def save_to_db(name, payment, long, lat):
+    """
+    Saves the newly marked parking lot and its parking spots to the database.
+
+    Args:
+        name (str): Name of the parking lot.
+        payment (bool): Indicates if payment is required.
+        long (float): Longitude.
+        lat (float): Latitude.
+    """
     response = getAddress(latitude=lat,longitude=long)
     address = ""
     if 'error' in response:
@@ -169,10 +225,9 @@ def save_to_db(name, payment, long, lat):
 
 
 if __name__ == "__main__":
-
+    # Step 1: Capture a still image if it doesn't exist
     if not os.path.exists(original_img_path):
         print("Taking still image from camera...")
-
         picam2 = Picamera2()
         picam2.configure(
             picam2.create_still_configuration(
@@ -198,9 +253,9 @@ if __name__ == "__main__":
         finally:
             picam2.stop()
 
-
+    # Step 2: Draw parking spots
     initial_parking_mark()
-
+    # Step 3: Prompt for metadata and save to the data base.
     entered_q = input("Did you finish to mark your parking spots? (y/n)").strip()
 
     if entered_q =='y' or entered_q =='Y':

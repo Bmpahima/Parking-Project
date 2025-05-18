@@ -2,5 +2,5 @@ from django.urls import path
 from . import consumers
 
 websocket_urlpatterns = [
-    path('ws/video/', consumers.VideoConsumer.as_asgi()),  # URL של ה-WebSocket
+    path('ws/video/', consumers.VideoConsumer.as_asgi()), #URL OF THE WEBSOCKET
 ]
