@@ -81,18 +81,17 @@ else:
 detect_validation_map = {} #make sure that the parking spot is avalible
 check_occupancy_map = {}
 saved_check_waiting = {}
+occupancy_flag_check = {}
 
-# פונקציה לבדיקה אם יש רכב בכל החניות בחניון
-# אם יש רכב בחניה מסוימת אנחנו מעדכנים את מצב החנייה: מעדכן רק תפוסה או פנויה 
 
-"""
+def parking_prediction(img):
+    """
     Predicts occupancy of all parking spots in the lot using a detection model.
     Updates their state accordingly and sends notifications if unauthorized usage is detected.
 
     Args:
         img (np.ndarray): Captured frame from the camera.
 """ 
-def parking_prediction(img):
     updated_parkings = []
     parking_queryset = Parking.objects.filter(parking_lot__name=parking_lot_name).select_related('parking_lot')
 
@@ -113,7 +112,7 @@ def parking_prediction(img):
                 else:
                     detect_validation_map[park_id] += 1
             
-                if detect_validation_map[park_id] >= 3:
+                if detect_validation_map[park_id] >= 4:
                     parking.occupied = False
                     parking.unauthorized_parking = False
                     parking.unauthorized_notification_sent = False  
@@ -126,20 +125,27 @@ def parking_prediction(img):
                     detect_validation_map[park_id] = 0
 
 
-            else: #before, wasnt car and now there is a car
-                parking.occupied = True
-                if parking.is_saved:
-                     print(f"{park_id} changed to saved and occupied")
-                     updated_parkings.append(parking)
-                     continue
-                elif not parking.driver and not parking.is_saved and not parking.unauthorized_notification_sent:
-                    parking.unauthorized_parking = True
-                    owner = parking.parking_lot.owner.first()
-                    if owner:
-                        sendEmailToUser(owner, "unknown_car", pid=park_id)
-                        parking.unauthorized_notification_sent = True
-                        print("now there is car")
-                    updated_parkings.append(parking)
+            else:#before, wasnt car and now there is a car
+                if park_id not in occupancy_flag_check: 
+                    occupancy_flag_check[park_id] = 1
+                else:
+                    occupancy_flag_check[park_id] += 1
+            
+                if occupancy_flag_check[park_id] >= 4:
+                    parking.occupied = True
+                    if parking.is_saved:
+                        print(f"{park_id} changed to saved and occupied")
+                        updated_parkings.append(parking)
+                        continue
+                    elif not parking.driver and not parking.is_saved and not parking.unauthorized_notification_sent:
+                        parking.unauthorized_parking = True
+                        owner = parking.parking_lot.owner.first()
+                        if owner:
+                            sendEmailToUser(owner, "unknown_car", pid=park_id)
+                            parking.unauthorized_notification_sent = True
+                            print("now there is car")
+                        updated_parkings.append(parking)
+                    occupancy_flag_check[park_id] = 0
 
         #check if there is no change of the state of the parking spot
         elif detected == parking.occupied:
@@ -150,7 +156,7 @@ def parking_prediction(img):
                 else:
                     check_occupancy_map[park_id] += 1 
                 #if after 20 checks the parking spot still ocupied and the car has no access - we send mail to the admin.
-                if check_occupancy_map[park_id] >= 2: 
+                if check_occupancy_map[park_id] >= 6: 
                     if parking.driver: #the driver is delayed for exit the parking lot
                         last_parked = parking.driver
                         owner = parking.parking_lot.owner.all()
@@ -163,7 +169,7 @@ def parking_prediction(img):
                         parking.unauthorized_parking = False
                         parking.save()
                     
-                    else:  #parking spot is occuiped and we dont have info about the driver.
+                    else:  #parking spot is occuiped and we dont have info about the driver, sending mail to admin of the parking lot
                         matched_user = match_license_plate_to_user(image)
                         owner = parking.parking_lot.owner.first()
                         if matched_user:
@@ -182,15 +188,23 @@ def parking_prediction(img):
 
             detect_validation_map[parking.id] = 0
 
-    if updated_parkings: # אם יש חניות לעדכון נעדכן רקקקקקק אותןןןן!          
+    if updated_parkings:#Update only changed parking spots          
         Parking.objects.bulk_update(updated_parkings, ['occupied', 'unauthorized_parking', 'unauthorized_notification_sent'])
 
 
-# פונקציה שמבצעת את הסריקה של כל החניות, ומחזירה את מספר החניות התפוסות ומספר החניות הפנויות
-# הפונקציה שמבצעת את הסריקה של כל החניות, ומחזירה את מספר החניות הפנויות, התפוסות והשמורות
+
 def liveParkingDetection(img):
+    """
+    Detects live parking status for the entire lot and returns a summary count.
+
+    Args:
+        img (np.ndarray): Captured image.
+
+    Returns:
+        tuple: Number of (avaliable, saved, occupied) parking spots.
+    """
     try:
-        parking_prediction(img)  # עדכון מצב החנייה בחניון
+        parking_prediction(img)
     except:
         print("error in prediction!")
     parking_queryset = Parking.objects.filter(parking_lot__name=parking_lot_name)
@@ -204,6 +218,13 @@ def liveParkingDetection(img):
 import base64
 
 async def send_frame_to_ws(frame):
+    """
+    Sends a single encoded video frame to the video stream WebSocket group.
+    only the manager of the parking lot can see the live stream.
+    Args:
+        frame (np.ndarray): Frame to be sent.
+    """
+    ...
     print("sending....")
     _, buffer = cv2.imencode('.jpg', frame)
     if buffer is None:
@@ -224,52 +245,61 @@ async def send_frame_to_ws(frame):
 
 
 def generate_frames():
+    """
+    Continuously captures video frames from the PiCamera, scans for parking space occupancy,
+    updates the parking database, overlays visual indicators on the frames, and sends them
+    through WebSocket for real-time streaming.
+
+    Workflow:
+        1. Capture a frame.
+        2. Every Nth frame, detect vehicles in all saved/reserved parking spots.
+        3. Run overall detection across the entire lot.
+        4. Draw colored boundaries over each parking spot:
+            - Red for occupied
+            - Blue for saved
+            - Green for free
+        5. Display summary stats (counts).
+        6. Stream the frame to frontend via WebSocket.
+        7. Repeat until user presses 'q'.
+
+    Global:
+        frame_count (int): Tracks number of frames processed for periodic scanning.
+
+    Raises:
+        Handles all exceptions internally with logging; never throws.
+    """
     global frame_count, save_count
-    print("[DEBUG] Generating frames...")
-    #cv2.namedWindow('Parking Detection', cv2.WINDOW_NORMAL)
 
     while True:
-        print("[DEBUG] Loop started - attempting to capture frame...")
         try:
             frame = picam2.capture_array()
             if frame is None:
                 print("[ERROR] No frame captured.")
                 continue
-
-            print("[DEBUG] Frame captured successfully.")
-            print(f"[DEBUG] Frame size: {frame.shape} | Type: {type(frame)}")
-
-            # הצגת הפריים
+            # show the frame
             # cv2.imshow("Parking Detection", frame)
             # print("[DEBUG] Frame displayed.")
 
         except Exception as e:
             print(f"[ERROR] Failed to capture frame: {str(e)}")
-            continue  # המשך לניסיון הבא
+            continue  #go to the next attempt
 
-        # 🔹 בדיקה: האם נבצע סריקה של כל החניות (כל פריים חמישי)
+        # Test: Will we scan all parking lots (every 5 frames)
         if frame_count % current_frame == 0:
             try:
-                print("[DEBUG] Scanning saved parking spots...")
                 saved_parking = Parking.objects.filter(is_saved=True).all()
-                print(f"[DEBUG] Saved parking spots found: {len(saved_parking)}")
-
                 for sp in saved_parking:
-                    print(f"[DEBUG] Checking saved parking: {sp.id}")
                     check_parking_status(sp, crop_image_by_points(frame, sp.coords))
                 
                 parkingList = Parking.objects.filter(parking_lot__name=parking_lot_name)
-                print(f"[DEBUG] Parking spots in lot: {len(parkingList)}")
-
                 free_spaces, saved_spaces, occupied_spaces = liveParkingDetection(frame)
-                print(f"[DEBUG] Parking scan result - Free: {free_spaces}, Saved: {saved_spaces}, Occupied: {occupied_spaces}")
                 frame_count = 0
             except Exception as e:
                 print(f"[ERROR] Error scanning parking spots: {str(e)}")
         else:
             print(f"[DEBUG] Frame count: {frame_count}")
 
-        # 🔹 שלב 3: ציור גבולות החניות וסטטוס
+        # drawing the bounding spots and status
         try:
             for parking in parkingList:
                 pts = np.array(parking.coords, np.int32).reshape((-1, 1, 2))
@@ -282,30 +312,27 @@ def generate_frames():
                             color=(0, 0, 255),
                             thickness=2)
 
-            # ציור סטטוס כללי
+            #draw status 
             cv2.putText(frame, f"Free: {free_spaces}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             cv2.putText(frame, f"Saved: {saved_spaces}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             cv2.putText(frame, f"Occupied: {occupied_spaces}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-            print("[DEBUG] Frame annotated with parking status.")
         except Exception as e:
             print(f"[ERROR] Failed to annotate frame: {str(e)}")
 
-        # 🔹 שלב 4: שליחת הפריים דרך WebSocket
+        # send the frames via websocket
         try:
             asyncio.run(send_frame_to_ws(frame))
-            print("[DEBUG] Frame sent to WebSocket.")
         except Exception as e:
             print(f"[ERROR] Failed to send frame to WebSocket: {str(e)}")
 
-        # 🔹 שלב 6: בדיקה אם יציאה מהלולאה (Q)
+        # check for exit from the loop 
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            print("[DEBUG] Exiting frame generation...")
             break
 
         frame_count += 1
 
-    # 🔹 שלב 7: ניקוי משאבים
+    #Clean resources
     picam2.stop()
     cv2.destroyAllWindows()
     print("[DEBUG] Camera stopped and resources released.")
@@ -315,50 +342,71 @@ def generate_frames():
 
 # הפונקציה שבודקת את סטטוס החניות השמורות, האם הרכב ששמר את החנייה הגיע או לא
 def check_parking_status(parking, park_img):
-    # אם החנייה שמורה ולא תפוסה - צריך לבדוק שהנהג לא מאחר
+    """
+    Verifies whether the reserved parking spot is used correctly by the driver or if there
+   is a delay or unauthorized vehicle. It handles validation using license plate recognition
+    and sends notifications accordingly.
+
+    Logic:
+        - If the parking is saved but not occupied:
+            - Check if the reservation time has expired.
+            - If so, cancel the reservation and notify the driver.
+
+        - If the parking is both saved and occupied:
+            - Wait for 2 cycles before proceeding to plate verification.
+            - Compare the actual driver license number with the detected plate number.
+            - Use Levenshtein distance to allow fuzzy match.
+            - If match is strong enough, mark as valid arrival.
+            - If not, notify driver about possible misuse.
+            - If plate is unreadable, notify as undefined.
+
+    Args:
+        parking (Parking): Reserved parking spot instance.
+        park_img (np.ndarray): Cropped image of the parking area.
+    """
+    #if the parking spot is saved and not occupied - we need to check if the car is not late
     if not parking.occupied: 
-        if parking.is_saved and parking.reserved_until < timezone.now(): # אם זמן השמירה של הבן אדם הגיע - הוא מאחר לכן נבטל את השמירה ונעדכן אותו במייל 
+        if parking.is_saved and parking.reserved_until < timezone.now(): #If the person's time limit has arrived - they are late, so we will cancel saved spot and notify them by email.
+
             sendEmailToUser(parking.driver, "late")
-            parking.is_saved = False # החנייה חוזרת להיות לא שמורה ופנויה לנהגים
+            parking.is_saved = False #The parking lot is once again unreserved and available to drivers.
             parking.driver = None
             parking.save()        
 
-    # אם החנייה שמורה ותפוסה - זה אומר שהרכב הגיע בזמן שלו, צריך לוודא שהוא באמת הוא        
+    #If the parking lot is reserved and occupied - it means the vehicle arrived on time, we need to check if this is really he
     else:
         if parking.id not in saved_check_waiting:
             saved_check_waiting[parking.id] = 1
         else:
             saved_check_waiting[parking.id] += 1
         
-        if saved_check_waiting[parking.id] >= 2 and parking.driver:
-            parking.is_saved = False # קודם כל החנייה כבר לא שמורה
+        if saved_check_waiting[parking.id] >= 6 and parking.driver:
+            parking.is_saved = False #now the parking spot is not saved
             parking.save()
             print("not saved anymore!")
 
-            actual_plate = parking.driver.license_number # מהו מספר הזהות של האדם ששמר את החנייה
-            predicted_plate = model.license_plate_prediction(park_img) # מה המודל זיהה, מי האדם שפיזית חונה בחנייה כרדע
+            actual_plate = parking.driver.license_number #the license plate number of the driver
+            predicted_plate = model.license_plate_prediction(park_img) #whats the model is recognized
             if predicted_plate is not None:
                 print("found a plate!")
                 predicted_number = model.license_number_prediction(crop_image_by_points(park_img, predicted_plate[1])) # זיהוי מספר הלוחי עצמה
                 if predicted_number is not None:
-                    predicted_plate_number = predicted_number[1] # המספר רישוי שהמודל זיהה
+                    predicted_plate_number = predicted_number[1] #the license plate that the model detacted
                     print(f"number found: {predicted_plate_number}")
-
-                    # הפעלת מרחק לבינשטיין, עד כמה מספר הרישוי של מי שחונה בחנייה דומה למספר הזהות של האדם שאמור לחנות שם.
+                    #Levenshtien distance to check the similarty between the actual license plate number to the predicted number.
                     similarity = 1 - Levenshtein.distance(actual_plate, predicted_plate_number) / max(len(actual_plate), len(predicted_plate_number))
                     print(f"similarity: {similarity}")
-                    # אם המספר יחסית דומה
+                    #if the similarity is higher then 0.5, we recognized the car.
                     if similarity >= 0.5: 
                         sendEmailToUser(parking.driver, "arrived")
                         parking.unauthorized_parking = False
-                        parking.unauthorized_notification_sent = True  # כדי שלא יישלח שוב מייל לאדמין
-                        print("welcome!!!!!!")
+                        parking.unauthorized_notification_sent = True 
                         parking.save()
                         
-                    # אחרת נשלח מייל לנהג ונבדוק אם זה באמת הוא
+                    #else, we will send email to the parking lot manager that we didnt recognize the driver.
                     else: 
                         sendEmailToUser(parking.driver, "taken")
-                        parking.unauthorized_notification_sent = True  # כדי שלא יישלח שוב מייל לאדמין
+                        parking.unauthorized_notification_sent = True
                         parking.save()
                         print("taken")
                 else:
@@ -367,13 +415,19 @@ def check_parking_status(parking, park_img):
             
             else: 
                 sendEmailToUser(parking.driver, "undefined")
-                print("undefined2")
-                # בשלב זה צריך לשלוח מייל למשתמש כדי שיאשר לנו אם זה הוא שנכנס לחנייה או לא
             saved_check_waiting[parking.id] = 0
             
 
-# פונקציה ששולחת מייל למשתמש
+
 def sendEmailToUser(user, status, **kwargs):
+    """
+    Sends a formatted email notification to a user depending on parking status.
+
+    Args:
+        user (User): The recipient user.
+        status (str): Type of status ('forgot', 'late', 'unknown_car', etc.)
+        **kwargs: Additional context for email (e.g. license_number, phone_number).
+    """
     try:
         if status == "admin_unknown":
             email_content = email_format(status, user_name=user.first_name, userid=user.id, phone_number=kwargs['phone_number'], license_number=kwargs['license_number'], pid=kwargs['pid']) 
@@ -381,7 +435,6 @@ def sendEmailToUser(user, status, **kwargs):
             email_content = email_format(status, user_name=user.first_name, userid=user.id ,pid=kwargs['pid']) 
         else: email_content = email_format(status, user_name=user.first_name, userid=user.id) 
 
-        # שליחה בפועל
         send_mail(
             subject=email_content['subject'],
             message=email_content['message'],
@@ -396,6 +449,15 @@ def sendEmailToUser(user, status, **kwargs):
     
 
 def match_license_plate_to_user(image):
+    """
+    Matches a detected license plate from an image to a registered user.
+
+    Args:
+        image (np.ndarray): The full frame image.
+
+    Returns:
+        parkingAuth or None: Matching user or None if no match.
+    """
     try:
         predicted_plate = model.license_plate_prediction(image)
         if predicted_plate is None:
@@ -418,8 +480,10 @@ def match_license_plate_to_user(image):
 print("[DEBUG] main.py loaded.")
 
 def start_parking_loop():
+    """
+    Starts the main loop responsible for capturing and analyzing frames.
+    """
     try:
-        print("[DEBUG] Parking loop started.")
         generate_frames()
     except Exception as e:
         print(f"[ERROR] Error in main: {str(e)}")
