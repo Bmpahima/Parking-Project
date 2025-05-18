@@ -49,6 +49,7 @@ else:
 detect_validation_map = {} # מוודא שהחנייה אכן פנויה 
 check_occupancy_map = {} # בודק אם החנייה תפוסה ורשומה על מישהו
 saved_check_waiting = {}
+occupancy_flag_check = {}
 
 # פונקציה לבדיקה אם יש רכב בכל החניות בחניון
 # אם יש רכב בחניה מסוימת אנחנו מעדכנים את מצב החנייה: מעדכן רק תפוסה או פנויה         
@@ -78,7 +79,7 @@ def parking_prediction(img):
                         else:
                             detect_validation_map[park_id] += 1
 
-                        if detect_validation_map[park_id] >= 3:
+                        if detect_validation_map[park_id] >= 4:
                             print(f"Parking {park_id} is now free. Resetting status.")
                             parking.occupied = False
                             parking.unauthorized_parking = False
@@ -92,19 +93,26 @@ def parking_prediction(img):
                             detect_validation_map[park_id] = 0
 
                     else:
-                        parking.occupied = True
-                        print(f"Parking {park_id} now occupied.")
+                        if park_id not in occupancy_flag_check:
+                            occupancy_flag_check[park_id] = 1
+                        else:
+                            occupancy_flag_check[park_id] += 1
 
-                        if parking.is_saved:
-                            print(f"{park_id} changed to saved and occupied")
-                            updated_parkings.append(parking)
-                        elif not parking.driver and not parking.is_saved and not parking.unauthorized_notification_sent:
-                            parking.unauthorized_parking = True
-                            owner = parking.parking_lot.owner.first()
-                            if owner:
-                                sendEmailToUser(owner, "unknown_car", pid=park_id)
-                                parking.unauthorized_notification_sent = True
-                            updated_parkings.append(parking)
+                        if occupancy_flag_check[park_id] >= 3:
+                            parking.occupied = True
+                            print(f"Parking {park_id} now occupied.")
+
+                            if parking.is_saved:
+                                print(f"{park_id} changed to saved and occupied")
+                                updated_parkings.append(parking)
+                            elif not parking.driver and not parking.is_saved and not parking.unauthorized_notification_sent:
+                                parking.unauthorized_parking = True
+                                owner = parking.parking_lot.owner.first()
+                                if owner:
+                                    sendEmailToUser(owner, "unknown_car", pid=park_id)
+                                    parking.unauthorized_notification_sent = True
+                                updated_parkings.append(parking)
+                            occupancy_flag_check[park_id] = 0
 
                 elif detected == parking.occupied:
                     print(f"No state change for parking {park_id}")
@@ -114,7 +122,7 @@ def parking_prediction(img):
                         else:
                             check_occupancy_map[park_id] += 1
 
-                        if check_occupancy_map[park_id] >= 2:
+                        if check_occupancy_map[park_id] >= 6:
                             if parking.driver:
                                 last_parked = parking.driver
                                 owner = parking.parking_lot.owner.all()
@@ -257,7 +265,7 @@ def check_parking_status(parking, park_img):
             
             print(f"Check count for parking {parking.id}: {saved_check_waiting[parking.id]}")
 
-            if saved_check_waiting[parking.id] >= 2 and parking.driver:
+            if saved_check_waiting[parking.id] >= 6 and parking.driver:
                 print("Performing driver validation.")
                 parking.is_saved = False
                 parking.save()
@@ -303,7 +311,7 @@ def check_parking_status(parking, park_img):
                 except Exception as e:
                     print(f"Error in license plate detection: {e}")
 
-            saved_check_waiting[parking.id] = 0
+                saved_check_waiting[parking.id] = 0
 
     except Exception as e:
         print(f"Error in validating parked vehicle: {e}")
