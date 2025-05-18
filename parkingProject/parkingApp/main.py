@@ -1,5 +1,13 @@
 # daphne -b 0.0.0.0 -p 8000 parkingProject.asgi:application
-
+"""
+This script handles real-time parking management using a Raspberry Pi camera and YOLO object detection.
+It includes:
+- Camera and model initialization
+- Parking space scanning
+- Occupancy state updates
+- Email notifications
+- Frame streaming via WebSocket
+""" 
 import os
 import django
 import Levenshtein
@@ -24,14 +32,16 @@ import asyncio
 
 
 
-# initialization: 
-model = ModelManager() # המודלים שיצרנו: מכוניות, לוחיות ומספרים
+# Initialize the YOLO model manager (vehicles, plates, numbers)
 
-vehicle = [0, 1] # קלאסים של כלי רכב, 0 - מכוניתת 1 - אופנוע
+model = ModelManager()
 
+# Define vehicle classes used in detection (0 = car, 1 = motorcycle)
+
+vehicle = [0, 1] 
+
+# Initialize and configure PiCamera
 picam2 = Picamera2()
-
-# הגדר את הפורמט
 picam2.configure(
     picam2.create_video_configuration(
         main={"format": "BGR888", "size": (1280, 720)},
@@ -41,11 +51,11 @@ picam2.configure(
 )
 
 print("[DEBUG] Camera configured.")
-
 picam2.start()
 print("[DEBUG] Camera started.")
 time.sleep(1) 
-parking_lot_name = 'raspi' # שם החניון הנסרק
+# Define parking lot Name assigned to this device
+parking_lot_name = 'raspi'
 print("[DEBUG] Testing camera capture...")
 
 test_frame = picam2.capture_array()
@@ -55,29 +65,33 @@ else:
     print("[DEBUG] Test frame captured successfully.")
 
 
-# הגדרות לצורך סריקת החניון כל חמש פריימים
+# Define scanning frequency (every 5 * 10 frames)
 fps = 30
 current_frame = int(10 * 5)
 frame_count = 0
 
-# [Parking, Parking, Parking, Parking, Parking, Parking]
-queryset = ParkingLot.objects.filter(name=parking_lot_name) # מחזיר לנו את החניון ואת כל החניות בו
+# Load all parkings from current parking lot
+queryset = ParkingLot.objects.filter(name=parking_lot_name)
 if queryset.exists():
-    parkingList = queryset.first().parkings.all() # מחזיר לנו את רשימת החניות בחניון
+    parkingList = queryset.first().parkings.all() #brings back the parking spots from the parking lot
 else:
     print(f"No parking lot found with name: {parking_lot_name}")
     parkingList = []
 
-
-# with open('parking_coordinates.pkl', 'rb') as f:
-#     positionList = pickle.load(f)
-
-detect_validation_map = {} # מוודא שהחנייה אכן פנויה 
-check_occupancy_map = {} # בודק אם החנייה תפוסה ורשומה על מישהו
+detect_validation_map = {} #make sure that the parking spot is avalible
+check_occupancy_map = {}
 saved_check_waiting = {}
 
 # פונקציה לבדיקה אם יש רכב בכל החניות בחניון
-# אם יש רכב בחניה מסוימת אנחנו מעדכנים את מצב החנייה: מעדכן רק תפוסה או פנויה         
+# אם יש רכב בחניה מסוימת אנחנו מעדכנים את מצב החנייה: מעדכן רק תפוסה או פנויה 
+
+"""
+    Predicts occupancy of all parking spots in the lot using a detection model.
+    Updates their state accordingly and sends notifications if unauthorized usage is detected.
+
+    Args:
+        img (np.ndarray): Captured frame from the camera.
+""" 
 def parking_prediction(img):
     updated_parkings = []
     parking_queryset = Parking.objects.filter(parking_lot__name=parking_lot_name).select_related('parking_lot')
@@ -90,10 +104,10 @@ def parking_prediction(img):
         detected = any(cls in vehicle for cls in detected_classes)
         park_id = parking.id
         
-        # ---------------------------------- נבדוק אם היה שינוי במצב החנייה ---------------------------------------
+        #Check if there is some change of the state of the parking spot
         if detected != parking.occupied: 
-            if not detected and parking.occupied: # כלומר אם קודם היה רכב ועכשיו אין רכב
-                # בדיקה שלוש פעמים אם באמת החנייה פנויה - מטפל במקרים בהם המודל מקרטע כאשר יש רכב בחנייה
+            if not detected and parking.occupied: #was car, and now there is no car
+                #check 3 times if the parking spot is really avaliable - to make sure.
                 if park_id not in detect_validation_map: 
                     detect_validation_map[park_id] = 1
                 else:
@@ -112,7 +126,7 @@ def parking_prediction(img):
                     detect_validation_map[park_id] = 0
 
 
-            else: # כלומר אם קודם לא היה רכב ועכשיו יש רכב 
+            else: #before, wasnt car and now there is a car
                 parking.occupied = True
                 if parking.is_saved:
                      print(f"{park_id} changed to saved and occupied")
@@ -127,17 +141,17 @@ def parking_prediction(img):
                         print("now there is car")
                     updated_parkings.append(parking)
 
-        # ---------------------------------- נבדוק אם לא היה שינוי במצב החנייה ---------------------------------------
+        #check if there is no change of the state of the parking spot
         elif detected == parking.occupied:
-            # אם החנייה תפוסה אך הנהג לא ידוע
+            #if the spot is occuiped but the driver is unknown
             if parking.occupied and parking.unauthorized_parking and not parking.unauthorized_notification_sent:
                 if park_id not in check_occupancy_map: 
                     check_occupancy_map[park_id] = 1
                 else:
                     check_occupancy_map[park_id] += 1 
-                # אם אחרי 20 בדיקות עדיין החנייה תפוסה והרכב לא מורשה נשלח מייל לאדמין
+                #if after 20 checks the parking spot still ocupied and the car has no access - we send mail to the admin.
                 if check_occupancy_map[park_id] >= 2: 
-                    if parking.driver: # הבנאדם מתעכב ביציאה שלו מהחנייה
+                    if parking.driver: #the driver is delayed for exit the parking lot
                         last_parked = parking.driver
                         owner = parking.parking_lot.owner.all()
 
@@ -149,7 +163,7 @@ def parking_prediction(img):
                         parking.unauthorized_parking = False
                         parking.save()
                     
-                    else:  # חנייה תפוסה ואין מידע על הנהג
+                    else:  #parking spot is occuiped and we dont have info about the driver.
                         matched_user = match_license_plate_to_user(image)
                         owner = parking.parking_lot.owner.first()
                         if matched_user:
