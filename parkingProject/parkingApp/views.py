@@ -16,6 +16,13 @@ from .main import sendEmailToUser
 from .util.parkingStats import get_parking_lot_stat
 
 class AllParkingLot (View):
+    """
+    Handles GET requests to retrieve all parking lots in the system.
+
+    Returns:
+        JsonResponse: A list of all parking lots, including name, location, capacity,
+        number of free spots, address, and lot ID.
+    """
     def get(self, request):
         try:
             all_parking_lots = ParkingLot.objects.all() # all parking lots
@@ -43,14 +50,21 @@ class AllParkingLot (View):
 
 
 class ParkingLotProvider(View):
+    """
+    Handles GET requests to retrieve all parking lots in the system.
+
+    Returns:
+        JsonResponse: A list of all parking lots, including name, location, capacity,
+        number of free spots, address, and lot ID.
+    """
     def get(self, request, id):
         try:
-            # החניון 
+            #the parking lot
             selected_parking_lot = ParkingLot.objects.get(pk=id)
             free_spots = selected_parking_lot.parking_spots - selected_parking_lot.parkings.filter(occupied=True).count()
-            # רשימת החניות שלו
+            #the list of the parking spots of the parking lot
             parkings = selected_parking_lot.parkings.all()
-            #יצירת מילון למידע מהחניון
+            #create a dict for the info from the parking lot
             parking_lot_dict = {
                 "id": selected_parking_lot.id,
                 "name": selected_parking_lot.name,
@@ -59,9 +73,7 @@ class ParkingLotProvider(View):
                 "longitude" :  selected_parking_lot.long,
                 "freeSpots": int(free_spots),
             }
-            #עיבוד רשימת מקומות החניה
             parkings_list = []
-
 
             for park in parkings: 
                 current_park = {
@@ -74,11 +86,24 @@ class ParkingLotProvider(View):
             return JsonResponse(parking_lot_dict, status=200, safe=False)
 
         except Exception as e:
-            pass
+            print(e)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SaveParking(View):
+    """
+    Allows a user to reserve a parking spot for a specified time.
+    Creates a reservation entry and saves history.
+
+    Request body:
+        id (int): ID of the parking spot.
+        user_id (int): ID of the user making the reservation.
+        savetime (str): Duration type ('immediate', 'half hour', 'hour').
+        we used atomic transaction - So that two people don't occupy the same parking space - only one of them will succeed
+
+    Returns:
+        JsonResponse: Success or error message.
+    """
 
     def post(self, request):
         try:
@@ -86,7 +111,7 @@ class SaveParking(View):
             id = data.get('id')
             user_id = data.get('user_id')
             savetime = data.get('savetime')
-
+            
             with transaction.atomic():
                 selected_parking = Parking.objects.select_for_update().get(id=id)
                 user_parking = parkingAuth.objects.get(id=user_id)
@@ -131,6 +156,17 @@ class SaveParking(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ReleaseParking(View):
+    """
+    Cancels a reserved or saved parking spot by the user.
+    Updates the status and history accordingly.
+
+    Request body:
+        id (int): Parking spot ID.
+        user_id (int): User releasing the spot.
+
+    Returns:
+        JsonResponse: Success or relevant error message.
+    """
     def post(self, request):
         try:
             data = json.loads(request.body)
@@ -139,7 +175,7 @@ class ReleaseParking(View):
 
             selected_parking = Parking.objects.get(id=parkingId) 
             user_parking = parkingAuth.objects.get(id=user_id) 
-            if not selected_parking.occupied and selected_parking.is_saved: # ביטול השמירה - אם החנייה לא תפוסה אך שמורה, כלומר הנהג טרם הגיע לחנייה השמורה לו
+            if not selected_parking.occupied and selected_parking.is_saved:
                 if selected_parking.driver != user_parking: 
                     return JsonResponse({"error": "you cannot cancel this!"},status=400)
                 
@@ -155,8 +191,8 @@ class ReleaseParking(View):
                     history.save()
                 return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
 
-            elif not selected_parking.occupied and not selected_parking.is_saved: # אם החנייה גם לא תפוסה וגם לא שמורה, יש כאן 2 אפשרויות
-                if selected_parking.driver: # הבנאדם יצא מהחנייה ועכשיו הוא רוצה לצאת מהאפליקציה
+            elif not selected_parking.occupied and not selected_parking.is_saved:#the parking spot is not saved and not occupied
+                if selected_parking.driver: #the driver get out from the spot and now want to close the app
                     selected_parking.is_saved = False
                     selected_parking.driver = None
                     selected_parking.reserved_until = None
@@ -168,11 +204,11 @@ class ReleaseParking(View):
                         history.save()
                     return JsonResponse({"success": "Parking saved successfuly"}, status=200, safe=False)
                 
-                else: # החנייה לא שמורה ולא תפוסה ולא קשורה לבן אדם
+                else: #the parking spot is no avaliable for the driver
                     return JsonResponse({'error':"This parking spot is not available!"}, status=400) 
                 
                 
-            else: # החנייה תפוסה, יש שם רכב
+            else: #the spot is occupied, there is a car there
                 selected_parking.unauthorized_parking = True
                 selected_parking.reserved_until = None
                 selected_parking.unauthorized_notification_sent = False
@@ -189,6 +225,15 @@ class ReleaseParking(View):
         
 
 class getOwnerParkingLot(View):
+    """
+    Returns all parking lots owned by a given admin.
+
+    Args:
+        id (int): ID of the user (owner).
+
+    Returns:
+        JsonResponse: List of parking lots with details of each spot.
+    """
     def get(self, request, id):
         try:
             user = parkingAuth.objects.filter(id=id).first()
@@ -228,6 +273,16 @@ class getOwnerParkingLot(View):
         
 
 class getParkingLotUsers(View):
+    """
+    Retrieves a list of users (drivers) associated with a given parking lot.
+    Includes details for users who currently occupy or have saved spots.
+
+    Args:
+        parkingLotId (int): ID of the parking lot.
+
+    Returns:
+        JsonResponse: List of parkings with associated user details.
+    """
     def get(self, request, parkingLotId):
         try:
             parking_lot = ParkingLot.objects.filter(id=parkingLotId).first()
@@ -265,6 +320,19 @@ class getParkingLotUsers(View):
         
 @method_decorator(csrf_exempt, name='dispatch')
 class GetParkingStats(View):
+    """
+    Provides statistics for a specific parking lot for a given month and year for the parking lot manager
+    Delegates computation to helper function.
+
+    Request body:
+        id (int): ID of the user (admin).
+        parkinglot (int): ID of the parking lot.
+        month (int): Month (1-12).
+        year (int): Year (e.g., 2024).
+
+    Returns:
+        JsonResponse: Success or error if data not found.
+    """
     def post(self, request):
         try:
             data = json.loads(request.body)
