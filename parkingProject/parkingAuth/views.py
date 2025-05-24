@@ -20,12 +20,16 @@ import random
 from django.utils import timezone
 
 
-
-
-
-
-# פונקציה להצפנת סיסמה
 def hash_password(plain_password):
+    """
+    Hashes a password using bcrypt.
+
+    Args:
+        plain_password (str): The user's plain password.
+
+    Returns:
+        str: A bcrypt-hashed version of the password.
+    """
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), salt)
     return hashed_password.decode('utf-8')
@@ -35,6 +39,15 @@ def hash_password(plain_password):
 @method_decorator(csrf_exempt, name='dispatch')
 class UserRegistrationView(View):
     def post(self, request):
+        """
+    Handles user registration based on vehicle license plate information.
+
+    Returns:
+        JsonResponse:
+            200 - User created with vehicle details.
+            400 - Car exists / invalid input.
+            500 - Unexpected error.
+    """
         try:
             form_data = json.loads(request.body)
             print(form_data)
@@ -97,21 +110,23 @@ class UserRegistrationView(View):
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
 
 
-#פונקציית התחברות
 @method_decorator(csrf_exempt, name='dispatch')
 class UserLoginView(View):
     def post(self, request):
+        """
+            Authenticates a user with email and password.
+        """
         try:
             form_data = json.loads(request.body)
             email_form_data = form_data['email'].lower()
             password_form_data = form_data['password']
-            # בדיקה אם המשתמש קיים
+            # Check if the user exists
             try:
                 user = parkingAuth.objects.get(email=email_form_data)
             except parkingAuth.DoesNotExist:
                 return JsonResponse({'error': 'User does not exist!'}, status=401)
 
-            # אימות הסיסמה
+            #password verification
             if bcrypt.checkpw(password_form_data.encode('utf-8'), user.password.encode('utf-8')):
                 user.is_active = True
                 user.save()
@@ -150,6 +165,9 @@ class UserLoginView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class UserLogoutView(View):
     def post(self, request):
+        """
+            Logs out the user and invalidates session.
+        """
         try:
             user_id = request.session.get('user_id')
             body = json.loads(request.body)
@@ -177,10 +195,28 @@ class UserLogoutView(View):
         
 
 def is_admin(user):
+    """
+    Checks if a user has admin privileges.
+
+    Args:
+        user (parkingAuth): The user instance.
+
+    Returns:
+        bool: True if admin, False otherwise.
+    """
     return user.is_admin
 
 class GetHistory(View):
     def get(self,request,userId):
+        """
+        Returns a list of completed parking sessions for a specific user.
+
+        URL Param:
+        userId (int): The user's ID.
+
+        Returns:
+        JsonResponse: List of parking records with time and location details.
+    """
         try:
             driver = parkingAuth.objects.filter(id=userId).first()
             list_history = []
@@ -211,6 +247,15 @@ class GetHistory(View):
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
         
 class AllParksHistory(View):
+    """
+    Returns a list of completed parking sessions for a specific user.
+
+    URL Param:
+        userId (int): The user's ID.
+
+    Returns:
+        JsonResponse: List of parking records with time and location details.
+    """
     def get(self,request,parkingLotId):
         try:
             park_history = ParkingHistory.objects.filter(parking__parking_lot__id=parkingLotId).all()
@@ -243,6 +288,9 @@ class AllParksHistory(View):
 @method_decorator(csrf_exempt, name='dispatch')       
 class ForgertPassword(View):
     def post(self,request):
+        """
+            Sends a 6-digit reset code to the user's email for password reset.
+        """
         try:
             data = json.loads(request.body)
             email = data.get("email")
@@ -254,7 +302,7 @@ class ForgertPassword(View):
             send_mail(
                 "Reset Your Password",
                 f"your code for reset your password is : {code}",
-                settings.DEFAULT_FROM_EMAIL,##פה אנחנו צריכים להגדיר מייל שלנו דפולטיבי שממנו יישלח בעצם המייל לכולם, זה בפרונט בן.
+                settings.DEFAULT_FROM_EMAIL,
                 [user.email], 
             ) 
             return JsonResponse({"message": "Check your email for a reset link.","code": code})
@@ -263,6 +311,9 @@ class ForgertPassword(View):
         
 @method_decorator(csrf_exempt, name='dispatch')       
 class ResetPassword(View):
+    """
+        Resets the user's password.
+    """
     def post(self,request):
         try:
             data = json.loads(request.body)
@@ -283,6 +334,12 @@ class ResetPassword(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class DeleteAccount(View):
+    """
+        Deletes a user's account and all related data.
+
+        URL Param:
+        userId (int): ID of the user to delete.
+    """
     def delete(self, request, userId):
         try:
             driver = parkingAuth.objects.get(id=userId)

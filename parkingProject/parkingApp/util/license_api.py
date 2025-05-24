@@ -1,6 +1,31 @@
 import requests
 
 def get_car_detail (license_number):
+
+    """
+    Fetches vehicle details from the Israeli government's open data API
+    using the car's license number.
+
+    Args:
+        license_number (str): The license plate number of the vehicle.
+
+    Returns:
+        dict or None: Returns a dictionary containing vehicle details if found:
+            {
+                "type": <vehicle manufacturer>,
+                "year": <production year>,
+                "color": <vehicle color>,
+                "model": <official model name>
+            }
+            Returns None if no matching record is found or if an error occurs.
+
+    Raises:
+        None explicitly. Prints error message if the API call fails or JSON parsing fails.
+
+    Example:
+        get_car_detail("1234567")
+        {'type': 'TOYOTA', 'year': '2020', 'color': 'לבן', 'model': 'קורולה'}
+    """
     try:
         base_url = "https://data.gov.il/api/3/action/datastore_search"
         params = {

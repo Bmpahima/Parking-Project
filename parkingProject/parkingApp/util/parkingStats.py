@@ -19,6 +19,32 @@ from io import BytesIO
 
 
 def get_parking_lot_stat(id, parking_lot_id=8, month=3, year=2025):
+    """
+    Generates and emails a statistical parking report (PDF) for a given parking lot,
+    based on parking history data, for a specific month or year.
+
+    The report includes:
+    - Average parking time per day of week
+    - Number of parked vehicles per day
+    - Vehicles per hour distribution
+    - Total parking time per parking spot
+    - Summary statistics including utilization rate
+
+    Args:
+        id (int): The ID of the parking lot owner (used to fetch email address).
+        parking_lot_id (int): ID of the ParkingLot model instance.
+        month (int): The month to generate the report for (0 means yearly report).
+        year (int): The year of the report.
+
+    Returns:
+        str or None: Returns "success" if the report was generated and sent successfully,
+                     otherwise returns None in case of errors or missing data.
+
+    Side Effects:
+        - Creates a PDF file in memory.
+        - Sends an email with the PDF attachment to the parking lot owner.
+    """
+    
     if not ParkingHistory.objects.filter(parking__parking_lot__id=parking_lot_id).exists():
         return None
     qs = ParkingHistory.objects.filter(parking__parking_lot__id=parking_lot_id).values()
@@ -44,7 +70,7 @@ def get_parking_lot_stat(id, parking_lot_id=8, month=3, year=2025):
 
     total_cars_parked = filtered_df.shape[0]
 
-    # נתונים
+    #Data
     grouped = filtered_df.groupby('day_in_week')['time_in_minutes'].mean().reindex([
         'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
     ]).fillna(0)
@@ -68,7 +94,7 @@ def get_parking_lot_stat(id, parking_lot_id=8, month=3, year=2025):
         total_parking_spots = selected_parking_lot.parking_spots
         total_time = filtered_df['time_in_minutes'].sum()
         avg_duration = filtered_df['time_in_minutes'].mean()
-        total_time_in_hours = total_time / 60  # המרת דקות לשעות
+        total_time_in_hours = total_time / 60 #minutes for hours
         total_hours_in_month = 30 * 24
         utilization_rate = (total_time_in_hours / (total_parking_spots * total_hours_in_month)) * 100
         summary1 = (
@@ -101,7 +127,7 @@ def get_parking_lot_stat(id, parking_lot_id=8, month=3, year=2025):
         ax_spacer1 = fig.add_subplot(gs[2, :])
         ax_spacer1.axis('off')
 
-        # גרף 1 - זמן ממוצע לפי יום
+        #Graph 1 - average time based on day
         ax1 = fig.add_subplot(gs[3, 0])
         ax1.bar(grouped.index, grouped.values, color="#0253ff")
         ax1.set_title("Average Parking Time per Day")
@@ -110,7 +136,7 @@ def get_parking_lot_stat(id, parking_lot_id=8, month=3, year=2025):
         ax1.tick_params(axis='x', rotation=45)
         ax1.grid(axis='y')
 
-        # גרף 2 - מספר רכבים לפי יום
+        #Graph 2 - number of vehicles for a day
         ax2 = fig.add_subplot(gs[3, 1])
         ax2.bar(grouped_in_out.index, grouped_in_out.values, color="#0253ff")
         ax2.set_title("Number of Cars per Day")
@@ -122,7 +148,7 @@ def get_parking_lot_stat(id, parking_lot_id=8, month=3, year=2025):
         ax_spacer2 = fig.add_subplot(gs[4, :])
         ax_spacer2.axis('off')
 
-        # גרף 3 - לפי שעה
+        #Graph 3 - by Hour
         ax3 = fig.add_subplot(gs[5, 0])
         ax3.plot(hourly_counts.index, hourly_counts.values, marker='o', color="#0253ff")
         ax3.set_title("Vehicles per Hour")
@@ -130,7 +156,7 @@ def get_parking_lot_stat(id, parking_lot_id=8, month=3, year=2025):
         ax3.set_ylabel("Cars")
         ax3.grid(axis='y')
 
-        # גרף 4 - לפי מספר חניה
+        #Graph 4 - By parking number
         ax4 = fig.add_subplot(gs[5, 1])
         ax4.bar(grouped_to_park.index.astype(str), grouped_to_park.values, color="#0253ff")
         ax4.set_title("Parking Time per Spot")
