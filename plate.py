@@ -6,6 +6,23 @@ import numpy as np
 model = YOLO('LicensePlateNumModel.pt')
 
 def plate_predict(path):
+    """
+    Detects and returns the license plate number from an image using a YOLO model.
+
+    Args:
+        path (str): Path to the image file containing the license plate.
+
+    Returns:
+        str: A string representing the sorted license plate number, or "not found" if
+             the prediction is invalid (not 7 or 8 characters).
+
+    Behavior:
+        - Loads the image using OpenCV.
+        - Uses the YOLO model to detect characters on the plate.
+        - Sorts characters based on their X-position (left to right).
+        - Assembles and prints the license number.
+        - Returns "not found" if the number of detected characters is not 7 or 8.
+    """
     predictions = []
 
     img = cv2.imread(path)

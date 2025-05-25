@@ -5,6 +5,9 @@ from parkingAuth.models import parkingAuth
 
 
 class ParkingLot(models.Model):
+    """
+    Represents the info about parking lot
+    """
     parking_spots = models.IntegerField()
     name = models.CharField(max_length=50)
     payment = models.BooleanField(default=False)
@@ -19,6 +22,9 @@ class ParkingLot(models.Model):
 
 
 class Parking(models.Model):
+    """
+    Represents a single parking spot in a parking lot.
+    """
     occupied = models.BooleanField(default=False, db_index=True) 
     coords = models.JSONField()
     parking_lot = models.ForeignKey(ParkingLot,on_delete=models.CASCADE,related_name="parkings")

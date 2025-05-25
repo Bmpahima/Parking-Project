@@ -1,4 +1,28 @@
-def email_format (status, user_name, **kwargs): 
+def email_format (status, user_name, **kwargs):
+    """
+    Generates an email format (subject, plain message, HTML message) based on a parking status event.
+
+    Parameters:
+    - status (str): The status indicating the event type (e.g., 'taken', 'arrived', 'late' and more).
+    - user_name (str): The name of the user receiving the email.
+    - **kwargs: Additional keyword arguments used for dynamic data in the message (userid, pid, phone_number, license_number).
+
+    Returns:
+    - dict: A dictionary containing:
+        - 'subject': The email subject line.
+        - 'message': The plain-text version of the message.
+        - 'html_message': The HTML-formatted message.
+
+    Supported statuses and their purpose:
+    - 'taken'        : Someone else parked in the user's reserved spot.
+    - 'undefined'    : The system couldn't recognize the license plate.
+    - 'late'         : The user's reservation expired due to no arrival.
+    - 'arrived'      : The user's car has arrived and been recognized.
+    - 'wrong_park'   : The user parked in a spot they didn't reserve.
+    - 'forgot'       : The user left, but the parking session is still active.
+    - 'admin_unknown': Admin alert - unknown car parked without payment.
+    - 'unknown_car'  : Unknown vehicle parked in the user's reserved spot.
+    """
     result_format = {
         "subject": "",
         "message": "",

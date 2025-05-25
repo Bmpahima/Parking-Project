@@ -8,9 +8,20 @@ https://docs.djangoproject.com/en/5.1/howto/deployment/wsgi/
 """
 
 import os
-
 from django.core.wsgi import get_wsgi_application
+import threading
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'parkingProject.settings')
 
+# הרצת ה־`main.py` במקביל
+def run_main():
+    from parkingApp.main import generate_frames
+    generate_frames()
+
+# התחלת תהליך נפרד עבור `main.py`
+thread = threading.Thread(target=run_main)
+thread.start()
+
 application = get_wsgi_application()
+
+

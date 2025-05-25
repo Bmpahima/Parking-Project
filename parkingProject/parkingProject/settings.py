@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'parkingAuth',
     'rest_framework.authtoken',
+    'channels',
 
 ]
 REST_FRAMEWORK = {
@@ -91,6 +92,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'parkingProject.wsgi.application'
+ASGI_APPLICATION = 'parkingProject.asgi.application'
 
 
 # Database
@@ -149,3 +151,9 @@ CORS_ALLOW_ALL_ORIGINS = True
 SESSION_COOKIE_AGE = 43200
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COKIE_SECURE = False
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
