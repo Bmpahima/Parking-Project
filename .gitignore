@@ -178,10 +178,10 @@ cython_debug/
 *.jpg
 *.jpeg
 *.mp4
+*.sqlite3.sqbpro
 
 
 env/
 parking_images/
 images/
-
-parkingProject/parkingProject/settings.py
+parkingParking/parkingParking/settings.py
