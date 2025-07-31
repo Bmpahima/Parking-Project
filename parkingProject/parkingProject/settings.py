@@ -16,8 +16,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com' 
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'razh10@gmail.com' 
-EMAIL_HOST_PASSWORD = 'dccv bixq kush clyz'  
+EMAIL_HOST_USER = 'TYPE_YOUR_EMAIL_HERE' 
+EMAIL_HOST_PASSWORD = 'TYPE_YOUR_HOST_PASSWORD_HERE'  
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-##$b=h@tezn10r3vjrs7u3sa&@krc$qb8(wci*8=e*u!*i)_zv'
+SECRET_KEY = 'TYPE_SECRET_KEY_HERE'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -94,7 +94,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'parkingProject.wsgi.application'
 ASGI_APPLICATION = 'parkingProject.asgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
@@ -104,7 +103,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -136,7 +134,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
@@ -148,8 +145,11 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True 
+
 SESSION_COOKIE_AGE = 43200
+
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
 SESSION_COKIE_SECURE = False
 
 CHANNEL_LAYERS = {

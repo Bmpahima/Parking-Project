@@ -34,13 +34,6 @@ def get_next_id():
     return max([pos['id'] for pos in positionList]) + 1 if positionList else 0
 
 
-# def save_img(img, points, id):
-#     save_path = os.path.join(save_dir, f'parking_no{id}.png')
-
-    # cv2.imwrite(save_path, crop_image_by_points(img, points))
-    # print(f'Saved cropped image: {save_path}')
-
-
 def mouseclick(events, x, y, flags, params):
     global current_pos
 
@@ -114,7 +107,7 @@ def getAddress(latitude, longitude):
             "lat": latitude,
             "lon": longitude,
             "format": "json",
-            "accept-language": "he"  # תוצאה בעברית
+            "accept-language": "he" 
         }
 
         headers = {"User-Agent": "MyParkingApp/1.0 (contact@example.com)"}  
@@ -177,7 +170,7 @@ if __name__ == "__main__":
         picam2.configure(
             picam2.create_still_configuration(
                 main={"format": 'BGR888', "size": (1280, 720)},
-                display=None  # מונע פתיחת חלון תצוגה
+                display=None  
             )
         )
         picam2.start()
@@ -226,35 +219,3 @@ if __name__ == "__main__":
 
     elif entered_q =='n' or entered_q =='N':
         pass
-
-
-
-
-
-
-    
-
-    # model = ModelManager()
-
-    # parking_image = cv2.imread(original_img_path)
-
-    # for i in range(len(positionList)):
-    #     image = crop_image_by_points(parking_image, positionList[i]["points"]) # the image of the parking
-    #     vehicle_predictions = model.free_or_occupied_prediction(image)
-    #     print(f" ========== car number {i} car prediction: ==========\n")
-    #     print(vehicle_predictions)
-
-    #     if vehicle_predictions and vehicle_predictions[0][0] in [0, 1]:
-    #         plate_prediction = model.license_plate_prediction(image)
-    #         print(f" ========== car number {i} license prediction: ==========\n")
-    #         print(plate_prediction)
-
-    #         if plate_prediction:
-    #             license_plate_img = crop_image_by_points(image, plate_prediction[1])
-    #             number_prediction = model.license_number_prediction(license_plate_img)
-    #             print(f"========== car number {i} number prediction: ==========\n")
-    #             print(number_prediction)
-
-    #             if number_prediction:
-    #                 vehicle_type = get_car_detail(number_prediction[1])
-    #                 print(vehicle_type)
