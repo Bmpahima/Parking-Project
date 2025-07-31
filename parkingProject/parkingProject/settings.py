@@ -16,8 +16,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com' 
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'razh10@gmail.com' 
-EMAIL_HOST_PASSWORD = 'dccv bixq kush clyz'  
+EMAIL_HOST_USER = 'TYPE_YOUR_EMAIL_HERE' 
+EMAIL_HOST_PASSWORD = 'TYPE_YOUR_HOST_PASSWORD_HERE'  
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-##$b=h@tezn10r3vjrs7u3sa&@krc$qb8(wci*8=e*u!*i)_zv'
+SECRET_KEY = 'TYPE_SECRET_KEY_HERE'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
