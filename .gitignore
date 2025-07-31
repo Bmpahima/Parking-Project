@@ -183,3 +183,5 @@ cython_debug/
 env/
 parking_images/
 images/
+
+parkingProject/parkingProject/settings.py
