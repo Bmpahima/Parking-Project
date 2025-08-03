@@ -94,7 +94,7 @@ Special thanks to all contributors, testers, and researchers who helped shape th
 ### 📌 Prerequisites
 
 - Raspberry Pi 5 with Camera Module 3  
-- Python 3.x installed on the Raspberry Pi  
+- Python 3.12.8 installed on the Raspberry Pi  
 - Django installed (`pip install django`)  
 - React Native setup for the frontend
 
