@@ -45,6 +45,22 @@ Want to see the system in action?
 
 ---
 
+## 🧾 Project File Descriptions
+
+- `main.py` – Main video processing loop. Captures frames, runs YOLO detection, checks license plates, updates spot states, and triggers alerts.
+- `initial.py` – GUI-based tool to manually define parking spot regions on a still image and save them to the database.
+- `settings.py` – Django settings, including database configuration, static files, CORS, and ASGI settings.
+- `urls.py` – Route manager that connects Django views to endpoint URLs.
+- `models.py` – Django models representing lots, spots, vehicles, users, and parking sessions.
+- `views.py` – Backend logic handling parking reservations, releases, license recognition, and live stream frame serving.
+- `consumers.py` – Django Channels WebSocket logic to stream video frames in real-time.
+- `utils/ocr.py` – Handles license plate extraction and Levenshtein-based matching.
+- `utils/spot_utils.py` – Parking spot validation, IOU calculations, and boundary checks.
+- `media/` – Directory where uploaded vehicle images and video frames are saved.
+- `parkingApp/templates/` – Optional: HTML templates if the backend needs web admin views.
+
+---
+
 ## 📌 Future Improvements (Optional Section)
 
 - 📡 Integrate automatic payment via license plate recognition  
