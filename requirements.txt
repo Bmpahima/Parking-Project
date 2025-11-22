@@ -148,7 +148,7 @@ thonny==4.1.4
 tifffile==2024.12.12
 toml==0.10.2
 tomlkit==0.11.7
-torch==2.2.2
+torch==2.8.0
 torchvision==0.17.2
 tqdm==4.67.1
 Twisted==24.11.0
